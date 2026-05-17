@@ -22,6 +22,7 @@ class SpectrometerSimulator:
             "spectrum"
         ]
         self.running: bool = False
+        self._running_event = asyncio.Event()
 
     def _load_csv(self) -> pd.DataFrame:
         """Load the CSV file and return a DataFrame with 'timestamp' and 'spectrum' columns."""
@@ -58,15 +59,17 @@ class SpectrometerSimulator:
 
     def start(self):
         self.running = True
+        self._running_event.set()
 
     def stop(self):
         self.running = False
+        self._running_event.clear()
 
     async def run(self):
         try:
             while True:
                 if not self.running:
-                    await asyncio.sleep(0.1)
+                    await self._running_event.wait()
                     continue
 
                 row = self.data.iloc[self.current_index]

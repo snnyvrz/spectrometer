@@ -30,13 +30,13 @@ app.add_middleware(
 
 
 @app.post("/simulation/start")
-def start_simulation():
+async def start_simulation():
     simulator.start()
     return {"running": True}
 
 
 @app.post("/simulation/stop")
-def stop_simulation():
+async def stop_simulation():
     simulator.stop()
     return {"running": False}
 
