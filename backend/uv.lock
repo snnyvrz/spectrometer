@@ -1,6 +1,6 @@
 version = 1
 revision = 3
-requires-python = ">=3.14"
+requires-python = "==3.14.*"
 resolution-markers = [
     "sys_platform == 'win32'",
     "sys_platform == 'emscripten'",
@@ -21,10 +21,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pandas", specifier = ">=3.0.3" }]
+requires-dist = [{ name = "pandas", specifier = ">=3.0.3,<3.1.0" }]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.15.13" }]
+dev = [{ name = "ruff", specifier = ">=0.15.13,<0.16.0" }]
 
 [[package]]
 name = "numpy"

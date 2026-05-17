@@ -2,12 +2,12 @@
 name = "backend"
 version = "0.1.0"
 description = "Add your description here"
-requires-python = ">=3.14"
+requires-python = ">=3.14,<3.15"
 dependencies = [
-    "pandas>=3.0.3",
+    "pandas>=3.0.3,<3.1.0",
 ]
 
 [dependency-groups]
 dev = [
-    "ruff>=0.15.13",
+    "ruff>=0.15.13,<0.16.0",
 ]

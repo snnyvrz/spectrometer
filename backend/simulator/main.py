@@ -84,3 +84,15 @@ class Simulation:
             next_timestamp = self.data.iloc[self.current_index + 1]["timestamp"]
             return (next_timestamp - self.current_timestamp).total_seconds()
         return 1.0
+    
+    def get_latest_spectrum(self) -> list[float]:
+        return self.current_spectrum
+    
+    def get_latest_timestamp(self) -> pd.Timestamp:
+        return self.current_timestamp
+    
+    def set_timestamp(self, timestamp: pd.Timestamp):
+        self.current_timestamp = timestamp
+        self.current_index = self.data.index[self.data["timestamp"] == timestamp][0]
+        self.current_spectrum = self.data.iloc[self.current_index]["spectrum"]
+        self.logger.debug(f"Timestamp set to: {self.current_timestamp}")
