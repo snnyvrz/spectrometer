@@ -1,21 +1,21 @@
 import asyncio
+from datetime import datetime
 import logging
 from pathlib import Path
 
 import pandas as pd
 
-CSV_FILE_PATH = (
-    Path("..") / "spectra.csv"
-)  # if you run this file from the backend directory, it works.
+# if you run this file from the backend directory, it works.
 # Adjust the path if you run it from a different location.
+CSV_FILE_PATH = Path("..") / "spectra.csv"
 
 
-class Simulation:
+class SpectrometerSimulator:
     def __init__(self):
         self.logger = self._setup_logger()
         self.data: pd.DataFrame = self._load_csv()
         self.current_index: int = 0
-        self.current_timestamp: pd.Timestamp = self.data.iloc[self.current_index][
+        self.current_timestamp: datetime = self.data.iloc[self.current_index][
             "timestamp"
         ]
         self.current_spectrum: list[float] = self.data.iloc[self.current_index][
@@ -64,34 +64,38 @@ class Simulation:
 
     async def run(self):
         try:
-            while self.running:
-                self.current_timestamp = self.data.iloc[
-                    self.current_index % len(self.data)
-                ]["timestamp"]
-                self.current_spectrum = self.data.iloc[self.current_index % len(self.data)][
-                    "spectrum"
-                ]
+            while True:
+                if not self.running:
+                    await asyncio.sleep(0.1)
+                    continue
+
+                row = self.data.iloc[self.current_index]
+                self.current_timestamp = row["timestamp"]
+                self.current_spectrum = row["spectrum"]
                 self.logger.debug(f"Updated to timestamp: {self.current_timestamp}")
                 await asyncio.sleep(self._get_sleep_time())
-                self.current_index += 1
+                self.current_index = (self.current_index + 1) % len(self.data)
         except asyncio.CancelledError:
             self.logger.info("Simulation run cancelled.")
 
     def _get_sleep_time(self) -> float:
         """Calculate the time to sleep until the next timestamp."""
 
-        if self.current_index + 1 < len(self.data):
-            next_timestamp = self.data.iloc[self.current_index + 1]["timestamp"]
-            return (next_timestamp - self.current_timestamp).total_seconds()
-        return 1.0
-    
+        next_index = (self.current_index + 1) % len(self.data)
+
+        if next_index == 0:
+            return 1.0
+
+        next_timestamp = self.data.iloc[next_index]["timestamp"]
+        return (next_timestamp - self.current_timestamp).total_seconds()
+
     def get_latest_spectrum(self) -> list[float]:
         return self.current_spectrum
-    
-    def get_latest_timestamp(self) -> pd.Timestamp:
+
+    def get_latest_timestamp(self) -> datetime:
         return self.current_timestamp
-    
-    def set_timestamp(self, timestamp: pd.Timestamp):
+
+    def set_timestamp(self, timestamp: datetime):
         self.current_timestamp = timestamp
         self.current_index = self.data.index[self.data["timestamp"] == timestamp][0]
         self.current_spectrum = self.data.iloc[self.current_index]["spectrum"]
