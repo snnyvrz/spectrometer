@@ -1,7 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 from simulator.main import SpectrometerSimulator
@@ -50,3 +50,18 @@ def get_latest_spectrum():
 def set_time(payload: SetTimeRequest):
     simulator.set_timestamp(payload.timestamp)
     return simulator.get_latest_spectrum()
+
+
+@app.websocket("/ws/spectrum")
+async def spectrum(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            await simulator._update_event.wait()
+            spectrum = simulator.get_latest_spectrum()
+            timestamp = simulator.get_latest_timestamp()
+            await websocket.send_json(
+                {"timestamp": timestamp.isoformat(), "spectrum": spectrum}
+            )
+    except asyncio.CancelledError:
+        await websocket.close()

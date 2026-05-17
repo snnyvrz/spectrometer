@@ -23,6 +23,7 @@ class SpectrometerSimulator:
         ]
         self.running: bool = False
         self._running_event = asyncio.Event()
+        self._update_event = asyncio.Event()
 
     def _load_csv(self) -> pd.DataFrame:
         """Load the CSV file and return a DataFrame with 'timestamp' and 'spectrum' columns."""
@@ -76,6 +77,8 @@ class SpectrometerSimulator:
                 self.current_timestamp = row["timestamp"]
                 self.current_spectrum = row["spectrum"]
                 self.logger.debug(f"Updated to timestamp: {self.current_timestamp}")
+                self._update_event.set()
+                self._update_event.clear()
                 await asyncio.sleep(self._get_sleep_time())
                 self.current_index = (self.current_index + 1) % len(self.data)
         except asyncio.CancelledError:
@@ -103,3 +106,5 @@ class SpectrometerSimulator:
         self.current_index = self.data.index[self.data["timestamp"] == timestamp][0]
         self.current_spectrum = self.data.iloc[self.current_index]["spectrum"]
         self.logger.debug(f"Timestamp set to: {self.current_timestamp}")
+        self._update_event.set()
+        self._update_event.clear()
