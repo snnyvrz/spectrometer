@@ -11,7 +11,6 @@ import {
 
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { use, useEffect, useState } from "react";
-import { useDebounce } from "@/hooks/use-debounce";
 import { Slider } from "./ui/slider";
 import { setIndex } from "@/api/actions";
 
@@ -27,9 +26,9 @@ export function Spectrum({ timestamps }: { timestamps: Promise<string[]> }) {
     { wavenumber: number; absorbance: number }[]
   >([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isUpdatingIndex, setIsUpdatingIndex] = useState(false);
 
   const allTimestamps = use(timestamps);
-  const debouncedIndex = useDebounce(selectedIndex, 300);
 
   const { lastJsonMessage, readyState } = useWebSocket<{
     timestamp: string;
@@ -54,20 +53,28 @@ export function Spectrum({ timestamps }: { timestamps: Promise<string[]> }) {
       );
       setChartData(newChartData);
 
-      const currentIndex = allTimestamps.findIndex(
-        (timestamp) => timestamp === lastJsonMessage.timestamp,
-      );
-      if (currentIndex >= 0) {
-        setSelectedIndex(currentIndex);
+      const nextIndex = allTimestamps.indexOf(lastJsonMessage.timestamp);
+
+      if (nextIndex >= 0) {
+        setSelectedIndex(nextIndex);
       }
     }
   }, [allTimestamps, lastJsonMessage]);
 
-  useEffect(() => {
-    setIndex(debouncedIndex).catch((error) => {
+  const handleIndexCommit = async (value: number[]) => {
+    const nextIndex = value[0] ?? 0;
+
+    setSelectedIndex(nextIndex);
+    setIsUpdatingIndex(true);
+
+    try {
+      await setIndex(nextIndex);
+    } catch (error) {
       console.error("Failed to set index:", error);
-    });
-  }, [debouncedIndex]);
+    } finally {
+      setIsUpdatingIndex(false);
+    }
+  };
 
   return (
     <div className="grow w-full max-w-4xl">
@@ -108,6 +115,8 @@ export function Spectrum({ timestamps }: { timestamps: Promise<string[]> }) {
         step={1}
         value={[selectedIndex]}
         onValueChange={(value) => setSelectedIndex(value[0] ?? 0)}
+        onValueCommit={handleIndexCommit}
+        disabled={isUpdatingIndex}
       />
     </div>
   );
