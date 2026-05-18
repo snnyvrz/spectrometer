@@ -42,8 +42,7 @@ async def spectrum(websocket: WebSocket):
     try:
         while True:
             await simulator._update_event.wait()
-            spectrum = simulator.get_latest_spectrum()
-            timestamp = simulator.get_latest_timestamp()
+            timestamp, _, spectrum = await simulator.get_latest_state()
             await websocket.send_json(
                 {"timestamp": timestamp.isoformat(), "spectrum": spectrum}
             )

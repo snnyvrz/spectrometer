@@ -24,6 +24,7 @@ class SpectrometerSimulator:
         self.running: bool = False
         self._running_event = asyncio.Event()
         self._update_event = asyncio.Event()
+        self._lock = asyncio.Lock()
 
     def _load_csv(self) -> pd.DataFrame:
         """Load the CSV file and return a DataFrame with 'timestamp' and 'spectrum' columns."""
@@ -58,72 +59,105 @@ class SpectrometerSimulator:
         logger.addHandler(ch)
         return logger
 
-    def _get_sleep_time(self) -> float:
+    def _get_sleep_time(self, current_index: int, current_timestamp: datetime) -> float:
         """Calculate the time to sleep until the next timestamp."""
 
-        next_index = (self.current_index + 1) % len(self.data)
+        next_index = (current_index + 1) % len(self.data)
 
         if next_index == 0:
             return 1.0
 
         next_timestamp = self.data.iloc[next_index]["timestamp"]
-        return (next_timestamp - self.current_timestamp).total_seconds()
+        return (next_timestamp - current_timestamp).total_seconds()
 
     def _trigger_update(self):
         self._update_event.set()
         self._update_event.clear()
 
-    def get_latest_spectrum(self) -> list[float]:
-        return self.current_spectrum
+    async def get_latest_spectrum(self) -> list[float]:
+        async with self._lock:
+            return list(self.current_spectrum)
 
-    def get_latest_timestamp(self) -> datetime:
-        return self.current_timestamp
+    async def get_latest_timestamp(self) -> datetime:
+        async with self._lock:
+            return self.current_timestamp
+
+    async def get_latest_state(self) -> tuple[datetime, int, list[float]]:
+        async with self._lock:
+            return (
+                self.current_timestamp,
+                self.current_index,
+                list(self.current_spectrum),
+            )
 
     def get_timestamps(self) -> list[datetime]:
         return self.data["timestamp"].tolist()
 
-    def get_index(self) -> int:
-        return self.current_index
+    async def get_index(self) -> int:
+        async with self._lock:
+            return self.current_index
 
-    def set_timestamp(self, timestamp: datetime):
+    async def set_timestamp(self, timestamp: datetime):
         if timestamp in self.get_timestamps():
-            self.current_timestamp = timestamp
-            self.current_index = self.data.index[self.data["timestamp"] == timestamp][0]
-            self.current_spectrum = self.data.iloc[self.current_index]["spectrum"]
-            self.logger.debug(f"Timestamp set to: {self.current_timestamp}")
+            index = self.data.index[self.data["timestamp"] == timestamp][0]
+            spectrum = self.data.iloc[index]["spectrum"]
+
+            async with self._lock:
+                self.current_timestamp = timestamp
+                self.current_index = index
+                self.current_spectrum = spectrum
+
+            self.logger.debug(f"Timestamp set to: {timestamp}")
             self._trigger_update()
         else:
             raise ValueError(f"Timestamp {timestamp} not found in data.")
 
-    def set_index(self, index: int):
-        self.current_index = index % len(self.data)
-        self.current_timestamp = self.data.iloc[self.current_index]["timestamp"]
-        self.current_spectrum = self.data.iloc[self.current_index]["spectrum"]
-        self.logger.debug(f"Index set to: {self.current_index}")
+    async def set_index(self, index: int):
+        current_index = index % len(self.data)
+        row = self.data.iloc[current_index]
+
+        async with self._lock:
+            self.current_index = current_index
+            self.current_timestamp = row["timestamp"]
+            self.current_spectrum = row["spectrum"]
+
+        self.logger.debug(f"Index set to: {current_index}")
         self._trigger_update()
 
-    def start(self):
-        self.running = True
+    async def start(self):
+        async with self._lock:
+            self.running = True
         self._running_event.set()
 
-    def stop(self):
-        self.running = False
+    async def stop(self):
+        async with self._lock:
+            self.running = False
         self._running_event.clear()
 
     async def run(self):
         try:
             while True:
-                if not self.running:
+                async with self._lock:
+                    running = self.running
+
+                if not running:
                     await self._running_event.wait()
                     continue
 
-                row = self.data.iloc[self.current_index]
-                self.current_timestamp = row["timestamp"]
-                self.current_spectrum = row["spectrum"]
-                self.logger.debug(f"Updated to timestamp: {self.current_timestamp}")
+                async with self._lock:
+                    row = self.data.iloc[self.current_index]
+                    self.current_timestamp = row["timestamp"]
+                    self.current_spectrum = row["spectrum"]
+                    current_index = self.current_index
+                    current_timestamp = self.current_timestamp
+                    sleep_time = self._get_sleep_time(current_index, current_timestamp)
+
+                self.logger.debug(f"Updated to timestamp: {current_timestamp}")
                 self._trigger_update()
-                await asyncio.sleep(self._get_sleep_time())
-                self.current_index = (self.current_index + 1) % len(self.data)
+                await asyncio.sleep(sleep_time)
+
+                async with self._lock:
+                    self.current_index = (self.current_index + 1) % len(self.data)
         except asyncio.CancelledError:
             self.logger.info("Simulation run cancelled.")
         finally:
