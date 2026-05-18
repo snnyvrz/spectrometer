@@ -3,8 +3,10 @@ import "./globals.css";
 import { Spectrum } from "@/components/spectrum";
 import { getTimestamps } from "@/api/fetch";
 import { Suspense } from "react";
+import { connection } from "next/server";
 
-export default function Home() {
+export default async function Home() {
+  await connection();
   const timestamps = getTimestamps();
 
   return (
