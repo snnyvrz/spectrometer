@@ -1,6 +1,6 @@
 "use client";
 
-import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 import {
   ChartContainer,
@@ -13,6 +13,7 @@ import useWebSocket, { ReadyState } from "react-use-websocket";
 import { use, useEffect, useState } from "react";
 import { Slider } from "./ui/slider";
 import { setIndex } from "@/api/actions";
+import { Badge, GreenBadge, RedBadge, YellowBadge } from "./ui/badge";
 
 const WEBSOCKET_BASE_URL = (
   process.env.NEXT_PUBLIC_WS_BASE_URL ??
@@ -96,8 +97,8 @@ export function Spectrum({ timestamps }: { timestamps: Promise<string[]> }) {
           <CartesianGrid vertical={false} />
           <XAxis
             dataKey="wavenumber"
-            tickLine={false}
-            axisLine={false}
+            tickLine={true}
+            axisLine={true}
             tickMargin={8}
           />
           <ChartTooltip
@@ -124,6 +125,19 @@ export function Spectrum({ timestamps }: { timestamps: Promise<string[]> }) {
         onValueCommit={handleIndexCommit}
         disabled={isUpdatingIndex}
       />
+
+      <div className="flex items-center gap-2">
+        <p>Connection Status: </p>
+        {connectionStatus === "Open" ? (
+          <GreenBadge label="Open" />
+        ) : connectionStatus === "Closed" ? (
+          <RedBadge label="Closed" />
+        ) : connectionStatus === "Uninstantiated" ? (
+          <Badge variant="outline">Uninstantiated</Badge>
+        ) : (
+          <YellowBadge label={connectionStatus} />
+        )}
+      </div>
     </div>
   );
 }
