@@ -1,8 +1,6 @@
-import { Control } from "@/components/control";
 import "./globals.css";
-import { Spectrum } from "@/components/spectrum";
+import { Dashboard } from "../components/dashboard";
 import { getTimestamps } from "@/api/fetch";
-import { Suspense } from "react";
 import { connection } from "next/server";
 
 export default async function Home() {
@@ -10,11 +8,8 @@ export default async function Home() {
   const timestamps = getTimestamps();
 
   return (
-    <main className="flex flex-col items-center gap-16 container mx-auto p-8 h-screen">
-      <Control />
-      <Suspense fallback={<div>Loading timestamps...</div>}>
-        <Spectrum timestamps={timestamps} />
-      </Suspense>
+    <main className="flex flex-col items-center container mx-auto p-8 gap-4">
+      <Dashboard timestamps={timestamps} />
     </main>
   );
 }
