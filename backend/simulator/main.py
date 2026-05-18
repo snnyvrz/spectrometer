@@ -58,6 +58,50 @@ class SpectrometerSimulator:
         logger.addHandler(ch)
         return logger
 
+    def _get_sleep_time(self) -> float:
+        """Calculate the time to sleep until the next timestamp."""
+
+        next_index = (self.current_index + 1) % len(self.data)
+
+        if next_index == 0:
+            return 1.0
+
+        next_timestamp = self.data.iloc[next_index]["timestamp"]
+        return (next_timestamp - self.current_timestamp).total_seconds()
+
+    def _trigger_update(self):
+        self._update_event.set()
+        self._update_event.clear()
+
+    def get_latest_spectrum(self) -> list[float]:
+        return self.current_spectrum
+
+    def get_latest_timestamp(self) -> datetime:
+        return self.current_timestamp
+
+    def get_timestamps(self) -> list[datetime]:
+        return self.data["timestamp"].tolist()
+
+    def get_index(self) -> int:
+        return self.current_index
+
+    def set_timestamp(self, timestamp: datetime):
+        if timestamp in self.get_timestamps():
+            self.current_timestamp = timestamp
+            self.current_index = self.data.index[self.data["timestamp"] == timestamp][0]
+            self.current_spectrum = self.data.iloc[self.current_index]["spectrum"]
+            self.logger.debug(f"Timestamp set to: {self.current_timestamp}")
+            self._trigger_update()
+        else:
+            raise ValueError(f"Timestamp {timestamp} not found in data.")
+
+    def set_index(self, index: int):
+        self.current_index = index % len(self.data)
+        self.current_timestamp = self.data.iloc[self.current_index]["timestamp"]
+        self.current_spectrum = self.data.iloc[self.current_index]["spectrum"]
+        self.logger.debug(f"Index set to: {self.current_index}")
+        self._trigger_update()
+
     def start(self):
         self.running = True
         self._running_event.set()
@@ -77,34 +121,10 @@ class SpectrometerSimulator:
                 self.current_timestamp = row["timestamp"]
                 self.current_spectrum = row["spectrum"]
                 self.logger.debug(f"Updated to timestamp: {self.current_timestamp}")
-                self._update_event.set()
-                self._update_event.clear()
+                self._trigger_update()
                 await asyncio.sleep(self._get_sleep_time())
                 self.current_index = (self.current_index + 1) % len(self.data)
         except asyncio.CancelledError:
             self.logger.info("Simulation run cancelled.")
-
-    def _get_sleep_time(self) -> float:
-        """Calculate the time to sleep until the next timestamp."""
-
-        next_index = (self.current_index + 1) % len(self.data)
-
-        if next_index == 0:
-            return 1.0
-
-        next_timestamp = self.data.iloc[next_index]["timestamp"]
-        return (next_timestamp - self.current_timestamp).total_seconds()
-
-    def get_latest_spectrum(self) -> list[float]:
-        return self.current_spectrum
-
-    def get_latest_timestamp(self) -> datetime:
-        return self.current_timestamp
-
-    def set_timestamp(self, timestamp: datetime):
-        self.current_timestamp = timestamp
-        self.current_index = self.data.index[self.data["timestamp"] == timestamp][0]
-        self.current_spectrum = self.data.iloc[self.current_index]["spectrum"]
-        self.logger.debug(f"Timestamp set to: {self.current_timestamp}")
-        self._update_event.set()
-        self._update_event.clear()
+        finally:
+            self.logger.info("Simulation stopped.")

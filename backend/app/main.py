@@ -5,56 +5,40 @@ from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 from simulator.main import SpectrometerSimulator
-from .schemas import SetTimeRequest
+from .routes import router
 
 
-simulator = SpectrometerSimulator()
+def get_simulator_from_websocket(websocket: WebSocket) -> SpectrometerSimulator:
+    return websocket.app.state.simulator
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    task = asyncio.create_task(simulator.run())
-    yield
-    task.cancel()
+    app.state.simulator = SpectrometerSimulator()
+    task = asyncio.create_task(app.state.simulator.run())
+    try:
+        yield
+    finally:
+        task.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-@app.post("/simulation/start")
-async def start_simulation():
-    simulator.start()
-    return {"running": True}
-
-
-@app.post("/simulation/stop")
-async def stop_simulation():
-    simulator.stop()
-    return {"running": False}
-
-
-@app.get("/simulation/spectrum")
-def get_latest_spectrum():
-    return simulator.get_latest_spectrum()
-
-
-@app.post("/simulation/time")
-def set_time(payload: SetTimeRequest):
-    simulator.set_timestamp(payload.timestamp)
-    return simulator.get_latest_spectrum()
+app.include_router(router)
 
 
 @app.websocket("/ws/spectrum")
 async def spectrum(websocket: WebSocket):
     await websocket.accept()
+    simulator = get_simulator_from_websocket(websocket)
     try:
         while True:
             await simulator._update_event.wait()

@@ -24,7 +24,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <header className="flex items-center justify-center w-full h-24 border-b">
-              <div className="w-full max-w-7xl flex items-center justify-between">
+              <div className="container flex items-center justify-between p-8">
                 <h1 className="text-3xl font-bold">Monipa</h1>
                 <ModeToggle />
               </div>
