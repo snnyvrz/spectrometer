@@ -1,4 +1,4 @@
-import { Control } from "@/components/ui/control";
+import { Control } from "@/components/control";
 import "./globals.css";
 
 export default function Home() {
