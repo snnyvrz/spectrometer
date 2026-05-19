@@ -24,6 +24,29 @@ class SpectrometerSimulator:
         self._running_event = asyncio.Event()
         self._update_event = asyncio.Event()
         self._lock = asyncio.Lock()
+        self._subscribers: set[asyncio.Queue] = set()
+        self._subscribers_lock = asyncio.Lock()
+
+    async def _broadcast_update(self) -> None:
+        timestamp, index, spectrum = await self.get_latest_state()
+
+        payload = {
+            "timestamp": timestamp.isoformat(),
+            "index": index,
+            "spectrum": spectrum,
+        }
+
+        async with self._subscribers_lock:
+            subscribers = list(self._subscribers)
+
+        for queue in subscribers:
+            if queue.full():
+                try:
+                    queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    pass
+
+            queue.put_nowait(payload)
 
     def _load_csv(self) -> pd.DataFrame:
         """Load the CSV file and return a DataFrame with 'timestamp' and 'spectrum' columns."""
@@ -69,10 +92,6 @@ class SpectrometerSimulator:
         next_timestamp = self.data.iloc[next_index]["timestamp"]
         return (next_timestamp - current_timestamp).total_seconds()
 
-    def _trigger_update(self):
-        self._update_event.set()
-        self._update_event.clear()
-
     async def get_latest_spectrum(self) -> list[float]:
         async with self._lock:
             return list(self.current_spectrum)
@@ -107,7 +126,7 @@ class SpectrometerSimulator:
                 self.current_spectrum = spectrum
 
             self.logger.debug(f"Timestamp set to: {timestamp}")
-            self._trigger_update()
+            await self._broadcast_update()
         else:
             raise ValueError(f"Timestamp {timestamp} not found in data.")
 
@@ -121,7 +140,7 @@ class SpectrometerSimulator:
             self.current_spectrum = row["spectrum"]
 
         self.logger.debug(f"Index set to: {current_index}")
-        self._trigger_update()
+        await self._broadcast_update()
 
     async def start(self):
         async with self._lock:
@@ -152,7 +171,7 @@ class SpectrometerSimulator:
                     sleep_time = self._get_sleep_time(current_index, current_timestamp)
 
                 self.logger.debug(f"Updated to timestamp: {current_timestamp}")
-                self._trigger_update()
+                await self._broadcast_update()
                 await asyncio.sleep(sleep_time)
 
                 async with self._lock:
@@ -161,3 +180,15 @@ class SpectrometerSimulator:
             self.logger.info("Simulation run cancelled.")
         finally:
             self.logger.info("Simulation stopped.")
+
+    async def subscribe(self) -> asyncio.Queue:
+        queue: asyncio.Queue = asyncio.Queue(maxsize=1)
+
+        async with self._subscribers_lock:
+            self._subscribers.add(queue)
+
+        return queue
+
+    async def unsubscribe(self, queue: asyncio.Queue) -> None:
+        async with self._subscribers_lock:
+            self._subscribers.discard(queue)
