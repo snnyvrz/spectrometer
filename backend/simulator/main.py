@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from .schemas import SpectrumData
+
 BASE_DIR = Path(__file__).parent.parent.parent
 CSV_FILE_PATH = BASE_DIR / "spectra.csv"
 
@@ -12,14 +14,10 @@ CSV_FILE_PATH = BASE_DIR / "spectra.csv"
 class SpectrometerSimulator:
     def __init__(self):
         self.logger = self._setup_logger()
-        self.data: pd.DataFrame = self._load_csv()
+        self.data = self._load_csv()
         self.current_index: int = 0
-        self.current_timestamp: datetime = self.data.iloc[self.current_index][
-            "timestamp"
-        ]
-        self.current_spectrum: list[float] = self.data.iloc[self.current_index][
-            "spectrum"
-        ]
+        self.current_timestamp: datetime = self.data[self.current_index].timestamp
+        self.current_spectrum: list[float] = self.data[self.current_index].spectrum
         self.running: bool = False
         self._running_event = asyncio.Event()
         self._update_event = asyncio.Event()
@@ -48,8 +46,8 @@ class SpectrometerSimulator:
 
             queue.put_nowait(payload)
 
-    def _load_csv(self) -> pd.DataFrame:
-        """Load the CSV file and return a DataFrame with 'timestamp' and 'spectrum' columns."""
+    def _load_csv(self) -> list[SpectrumData]:
+        """Load the CSV file and return a list of SpectrumData objects."""
 
         try:
             raw_data = pd.read_csv(CSV_FILE_PATH)
@@ -62,12 +60,13 @@ class SpectrometerSimulator:
         timestamp_column = raw_data.columns[0]
         spectrum_columns = raw_data.columns[1:]
 
-        return pd.DataFrame(
-            {
-                "timestamp": pd.to_datetime(raw_data[timestamp_column]),
-                "spectrum": raw_data[spectrum_columns].values.tolist(),
-            }
-        )
+        data = []
+        for _, row in raw_data.iterrows():
+            timestamp = datetime.fromisoformat(row[timestamp_column])
+            spectrum = [float(row[col]) for col in spectrum_columns]
+            data.append(SpectrumData(timestamp=timestamp, spectrum=spectrum))
+
+        return data
 
     def _setup_logger(self) -> logging.Logger:
         logger = logging.getLogger("SimulationLogger")
@@ -89,7 +88,7 @@ class SpectrometerSimulator:
         if next_index == 0:
             return 1.0
 
-        next_timestamp = self.data.iloc[next_index]["timestamp"]
+        next_timestamp = self.data[next_index].timestamp
         return (next_timestamp - current_timestamp).total_seconds()
 
     async def get_latest_spectrum(self) -> list[float]:
@@ -109,7 +108,7 @@ class SpectrometerSimulator:
             )
 
     def get_timestamps(self) -> list[datetime]:
-        return self.data["timestamp"].tolist()
+        return [data.timestamp for data in self.data]
 
     async def get_index(self) -> int:
         async with self._lock:
@@ -117,8 +116,10 @@ class SpectrometerSimulator:
 
     async def set_timestamp(self, timestamp: datetime):
         if timestamp in self.get_timestamps():
-            index = self.data.index[self.data["timestamp"] == timestamp][0]
-            spectrum = self.data.iloc[index]["spectrum"]
+            index = next(
+                i for i, data in enumerate(self.data) if data.timestamp == timestamp
+            )
+            spectrum = self.data[index].spectrum
 
             async with self._lock:
                 self.current_timestamp = timestamp
@@ -132,12 +133,12 @@ class SpectrometerSimulator:
 
     async def set_index(self, index: int):
         current_index = index % len(self.data)
-        row = self.data.iloc[current_index]
+        spectrum_data = self.data[current_index]
 
         async with self._lock:
             self.current_index = current_index
-            self.current_timestamp = row["timestamp"]
-            self.current_spectrum = row["spectrum"]
+            self.current_timestamp = spectrum_data.timestamp
+            self.current_spectrum = spectrum_data.spectrum
 
         self.logger.debug(f"Index set to: {current_index}")
         await self._broadcast_update()
@@ -163,9 +164,9 @@ class SpectrometerSimulator:
                     continue
 
                 async with self._lock:
-                    row = self.data.iloc[self.current_index]
-                    self.current_timestamp = row["timestamp"]
-                    self.current_spectrum = row["spectrum"]
+                    spectrum_data = self.data[self.current_index]
+                    self.current_timestamp = spectrum_data.timestamp
+                    self.current_spectrum = spectrum_data.spectrum
                     current_index = self.current_index
                     current_timestamp = self.current_timestamp
                     sleep_time = self._get_sleep_time(current_index, current_timestamp)
