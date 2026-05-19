@@ -5,14 +5,8 @@ from typing import Generic, TypeVar
 T = TypeVar("T")
 
 
-class ApiError(BaseModel):
-    code: str
-    message: str
-
-
 class ApiResponse(BaseModel, Generic[T]):
     data: T | None
-    error: ApiError | None = None
 
 
 class SimulationState(BaseModel):

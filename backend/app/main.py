@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from simulator.main import SpectrometerSimulator
 from .routes import router
+from .settings import get_settings
 
 
 def get_simulator_from_websocket(websocket: WebSocket) -> SpectrometerSimulator:
@@ -23,10 +24,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+settings = get_settings()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=settings.cors_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,10 +1,9 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from simulator.main import SpectrometerSimulator
 from .schemas import (
-    ApiError,
     ApiResponse,
     IndexPayload,
     SetIndexRequest,
@@ -55,10 +54,7 @@ async def set_time(payload: SetTimeRequest, simulator: SimulatorDep):
     try:
         await simulator.set_timestamp(payload.timestamp)
     except ValueError as e:
-        return {
-            "data": None,
-            "error": ApiError(code="timestamp_not_found", message=str(e)),
-        }
+        raise HTTPException(status_code=400, detail=str(e))
     timestamp, index, spectrum = await simulator.get_latest_state()
     return {"data": {"timestamp": timestamp, "index": index, "spectrum": spectrum}}
 
@@ -74,6 +70,6 @@ async def set_index(payload: SetIndexRequest, simulator: SimulatorDep):
     try:
         await simulator.set_index(payload.index)
     except ValueError as e:
-        return {"data": None, "error": ApiError(code="index_not_found", message=str(e))}
+        raise HTTPException(status_code=400, detail=str(e))
     index = await simulator.get_index()
     return {"data": {"index": index}}

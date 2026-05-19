@@ -39,11 +39,7 @@ const connectionStatusMap: Record<ReadyState, ConnectionStatus> = {
   [ReadyState.UNINSTANTIATED]: "Uninstantiated",
 };
 
-const WEBSOCKET_BASE_URL = (
-  process.env.NEXT_PUBLIC_WS_BASE_URL ??
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/^http/, "ws") ??
-  "ws://localhost:8000"
-).replace(/\/$/, "");
+const WEBSOCKET_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL;
 
 const chartConfig = {
   absorbance: {
