@@ -25,31 +25,31 @@ type SimulatorDep = Annotated[
 ]
 
 
-@router.post("/start/", response_model=ApiResponse[SimulationState])
+@router.patch("/start", response_model=ApiResponse[SimulationState])
 async def start_simulation(simulator: SimulatorDep):
     await simulator.start()
     return {"data": {"running": True}}
 
 
-@router.post("/stop/", response_model=ApiResponse[SimulationState])
+@router.patch("/stop", response_model=ApiResponse[SimulationState])
 async def stop_simulation(simulator: SimulatorDep):
     await simulator.stop()
     return {"data": {"running": False}}
 
 
-@router.get("/spectrum/", response_model=ApiResponse[SpectrumPayload])
+@router.get("/spectrum", response_model=ApiResponse[SpectrumPayload])
 async def get_latest_spectrum(simulator: SimulatorDep):
     timestamp, index, spectrum = await simulator.get_latest_state()
     return {"data": {"timestamp": timestamp, "index": index, "spectrum": spectrum}}
 
 
-@router.get("/timestamps/", response_model=ApiResponse[TimestampListPayload])
+@router.get("/timestamps", response_model=ApiResponse[TimestampListPayload])
 def get_timestamps(simulator: SimulatorDep):
     timestamps = simulator.get_timestamps()
     return {"data": {"timestamps": timestamps}}
 
 
-@router.post("/timestamp/", response_model=ApiResponse[SpectrumPayload])
+@router.patch("/timestamp", response_model=ApiResponse[SpectrumPayload])
 async def set_time(payload: SetTimeRequest, simulator: SimulatorDep):
     try:
         await simulator.set_timestamp(payload.timestamp)
@@ -59,13 +59,13 @@ async def set_time(payload: SetTimeRequest, simulator: SimulatorDep):
     return {"data": {"timestamp": timestamp, "index": index, "spectrum": spectrum}}
 
 
-@router.get("/index/", response_model=ApiResponse[IndexPayload])
+@router.get("/index", response_model=ApiResponse[IndexPayload])
 async def get_index(simulator: SimulatorDep):
     index = await simulator.get_index()
     return {"data": {"index": index}}
 
 
-@router.post("/index/", response_model=ApiResponse[IndexPayload])
+@router.patch("/index", response_model=ApiResponse[IndexPayload])
 async def set_index(payload: SetIndexRequest, simulator: SimulatorDep):
     try:
         await simulator.set_index(payload.index)

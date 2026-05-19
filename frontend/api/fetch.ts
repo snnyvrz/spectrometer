@@ -4,8 +4,12 @@ import { get } from ".";
 export const getTimestamps = async () => {
   "use cache";
   cacheLife("hours");
-  const response = await get<{ data: { timestamps: string[] } }>(
-    "simulation/timestamps/",
-  );
-  return response.data.timestamps;
+  try {
+    const response = await get<{ timestamps: string[] }>(
+      "simulation/timestamps",
+    );
+    return response.timestamps;
+  } catch (error) {
+    throw new Error("Failed to fetch timestamps: " + (error as Error).message);
+  }
 };
