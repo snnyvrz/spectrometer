@@ -5,9 +5,8 @@ from pathlib import Path
 
 import pandas as pd
 
-# if you run this file from the backend directory, it works.
-# Adjust the path if you run it from a different location.
-CSV_FILE_PATH = Path("..") / "spectra.csv"
+BASE_DIR = Path(__file__).parent.parent.parent
+CSV_FILE_PATH = BASE_DIR / "spectra.csv"
 
 
 class SpectrometerSimulator:
