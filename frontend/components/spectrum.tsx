@@ -1,6 +1,6 @@
 "use client";
 
-import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { start, stop, setIndex } from "@/api/actions";
 import type { TimestampsResult } from "@/api/fetch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -124,7 +124,7 @@ export function Spectrum({
   const chartData = (lastJsonMessage?.spectrum ?? []).map(
     (absorbance, index) => ({
       wavenumber: index + 1000,
-      absorbance,
+      absorbance: absorbance * 1000,
     }),
   );
 
@@ -226,12 +226,31 @@ export function Spectrum({
             right: 12,
           }}
         >
-          <CartesianGrid vertical={false} />
+          <CartesianGrid />
           <XAxis
             dataKey="wavenumber"
             tickLine={true}
             axisLine={true}
             tickMargin={8}
+            interval={99}
+            label={{
+              value: "Wavenumber (cm⁻¹)",
+              position: "insideBottom",
+              offset: 50,
+            }}
+          />
+          <YAxis
+            dataKey="absorbance"
+            tickLine={true}
+            axisLine={true}
+            tickMargin={8}
+            domain={[-10, 90]}
+            interval="preserveStartEnd"
+            label={{
+              value: "Absorbance (mAU)",
+              angle: -90,
+              position: "left",
+            }}
           />
           <ChartTooltip
             cursor={false}
