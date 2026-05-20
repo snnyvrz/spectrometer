@@ -15,7 +15,7 @@ import {
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { use, useEffect, useRef, useState, useTransition } from "react";
 import { Slider } from "./ui/slider";
-import { Badge, GreenBadge, RedBadge, YellowBadge } from "./ui/badge";
+import { Badge } from "./ui/badge";
 import { Toggle } from "./ui/toggle";
 import { AlertCircle, Link, Play, RotateCcw, Square } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -199,7 +199,7 @@ export function Spectrum({
   const currentTimestamp = hasTimestamps ? allTimestamps[selectedIndex] : null;
 
   return (
-    <div className="w-full max-w-4xl">
+    <div className="w-full max-w-4xl border rounded-lg border-primary bg-card p-6">
       {apiError ? (
         <div className="mb-4 flex flex-col gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-2">
@@ -264,15 +264,7 @@ export function Spectrum({
       <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 text-sm">
           <p className="text-muted-foreground">Connection Status:</p>
-          {connectionStatus === "Open" ? (
-            <GreenBadge label="Open" />
-          ) : connectionStatus === "Closed" ? (
-            <RedBadge label="Closed" />
-          ) : connectionStatus === "Uninstantiated" ? (
-            <Badge variant="outline">Uninstantiated</Badge>
-          ) : (
-            <YellowBadge label={connectionStatus} />
-          )}
+          <Badge>{connectionStatus}</Badge>
           <p>
             Current Timestamp:{" "}
             {currentTimestamp

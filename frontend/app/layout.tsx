@@ -1,6 +1,10 @@
 import { ModeToggle } from "@/components/mode-toggler";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Suspense } from "react";
+import { IBM_Plex_Sans } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const ibmPlexSans = IBM_Plex_Sans({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata = {
   title: "Monipa",
@@ -15,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <>
-      <html lang="en" suppressHydrationWarning>
+      <html lang="en" suppressHydrationWarning className={cn("font-sans", ibmPlexSans.variable)}>
         <head />
         <body suppressHydrationWarning>
           <Suspense>
