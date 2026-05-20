@@ -20,7 +20,6 @@ class SpectrometerSimulator:
         self.current_spectrum: list[float] = self.data[self.current_index].spectrum
         self.running: bool = False
         self._running_event = asyncio.Event()
-        self._update_event = asyncio.Event()
         self._lock = asyncio.Lock()
         self._subscribers: set[asyncio.Queue] = set()
         self._subscribers_lock = asyncio.Lock()
@@ -77,7 +76,8 @@ class SpectrometerSimulator:
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
         ch.setFormatter(formatter)
-        logger.addHandler(ch)
+        if not logger.handlers:
+            logger.addHandler(ch)
         return logger
 
     def _get_sleep_time(self, current_index: int, current_timestamp: datetime) -> float:
@@ -187,6 +187,16 @@ class SpectrometerSimulator:
 
         async with self._subscribers_lock:
             self._subscribers.add(queue)
+
+        timestamp, index, spectrum = await self.get_latest_state()
+
+        queue.put_nowait(
+            {
+                "timestamp": timestamp.isoformat(),
+                "index": index,
+                "spectrum": spectrum,
+            }
+        )
 
         return queue
 

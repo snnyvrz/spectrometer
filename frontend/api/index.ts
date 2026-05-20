@@ -10,9 +10,31 @@ type ApiResponse<T> = {
   error: ApiError | null;
 };
 
-export const get = async <T>(endpoint: string): Promise<T> => {
-  const response = await fetch(`${BASE_URL}/${endpoint}`);
-  const json = (await response.json()) as ApiResponse<T>;
+export type ApiResult<T> = {
+  data: T | null;
+  error: string | null;
+};
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Request failed";
+};
+
+const parseResponse = async <T>(response: Response): Promise<T> => {
+  let json: ApiResponse<T>;
+
+  try {
+    json = (await response.json()) as ApiResponse<T>;
+  } catch {
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    throw new Error("Invalid API response");
+  }
 
   if (!response.ok || json.error) {
     throw new Error(json.error?.message ?? "Request failed");
@@ -25,25 +47,59 @@ export const get = async <T>(endpoint: string): Promise<T> => {
   return json.data;
 };
 
+export const get = async <T>(endpoint: string): Promise<T> => {
+  try {
+    const response = await fetch(`${BASE_URL}/${endpoint}`);
+    return await parseResponse<T>(response);
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
+  }
+};
+
+export const safeGet = async <T>(endpoint: string): Promise<ApiResult<T>> => {
+  try {
+    return {
+      data: await get<T>(endpoint),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: getErrorMessage(error),
+    };
+  }
+};
+
 export const patch = async <T>(
   endpoint: string,
   body?: unknown,
 ): Promise<T> => {
-  const response = await fetch(`${BASE_URL}/${endpoint}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  try {
+    const response = await fetch(`${BASE_URL}/${endpoint}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
 
-  const json = (await response.json()) as ApiResponse<T>;
-
-  if (!response.ok || json.error) {
-    throw new Error(json.error?.message ?? "Request failed");
+    return await parseResponse<T>(response);
+  } catch (error) {
+    throw new Error(getErrorMessage(error));
   }
+};
 
-  if (json.data === null) {
-    throw new Error("Missing response data");
+export const safePatch = async <T>(
+  endpoint: string,
+  body?: unknown,
+): Promise<ApiResult<T>> => {
+  try {
+    return {
+      data: await patch<T>(endpoint, body),
+      error: null,
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: getErrorMessage(error),
+    };
   }
-
-  return json.data;
 };

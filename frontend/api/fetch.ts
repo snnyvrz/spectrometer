@@ -1,15 +1,19 @@
-import { cacheLife } from "next/cache";
-import { get } from ".";
+import { safeGet } from ".";
+
+export type TimestampsResult = {
+  timestamps: string[];
+  error: string | null;
+};
 
 export const getTimestamps = async () => {
-  "use cache";
-  cacheLife("hours");
-  try {
-    const response = await get<{ timestamps: string[] }>(
-      "simulation/timestamps",
-    );
-    return response.timestamps;
-  } catch (error) {
-    throw new Error("Failed to fetch timestamps: " + (error as Error).message);
-  }
+  const response = await safeGet<{ timestamps: string[] }>(
+    "simulation/timestamps",
+  );
+
+  return {
+    timestamps: response.data?.timestamps ?? [],
+    error: response.error
+      ? `Failed to fetch timestamps: ${response.error}`
+      : null,
+  } satisfies TimestampsResult;
 };

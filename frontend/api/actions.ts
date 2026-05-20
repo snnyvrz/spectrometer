@@ -1,31 +1,43 @@
 "use server";
 
-import { patch } from ".";
+import { safePatch } from ".";
 
-export async function start() {
-  try {
-    await patch("simulation/start");
-  } catch (error) {
-    throw new Error("Failed to start simulation: " + (error as Error).message);
-  }
+export type ActionResult = {
+  ok: boolean;
+  error: string | null;
+};
+
+export async function start(): Promise<ActionResult> {
+  const response = await safePatch<unknown>("simulation/start");
+
+  return {
+    ok: response.error === null,
+    error: response.error
+      ? `Failed to start simulation: ${response.error}`
+      : null,
+  };
 }
 
-export async function stop() {
-  try {
-    await patch("simulation/stop");
-  } catch (error) {
-    throw new Error("Failed to stop simulation: " + (error as Error).message);
-  }
+export async function stop(): Promise<ActionResult> {
+  const response = await safePatch<unknown>("simulation/stop");
+
+  return {
+    ok: response.error === null,
+    error: response.error
+      ? `Failed to stop simulation: ${response.error}`
+      : null,
+  };
 }
 
-export async function setIndex(index: number) {
-  try {
-    return await patch<{ data: { index: number } }>("simulation/index", {
-      index,
-    });
-  } catch (error) {
-    throw new Error(
-      "Failed to set simulation index: " + (error as Error).message,
-    );
-  }
+export async function setIndex(index: number): Promise<ActionResult> {
+  const response = await safePatch<{ index: number }>("simulation/index", {
+    index,
+  });
+
+  return {
+    ok: response.error === null,
+    error: response.error
+      ? `Failed to set simulation index: ${response.error}`
+      : null,
+  };
 }
