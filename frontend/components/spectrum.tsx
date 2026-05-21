@@ -74,9 +74,9 @@ export function Spectrum({
   {
     /* allTimestamps holds the array of timestamps fetched from the backend, while initialError captures any error that occurs during the fetching process, enabling error handling in the UI */
   }
-  const [apiError, setApiError] = useState<string | null>(initialError);
+  const [actionError, setActionError] = useState<string | null>(null);
   {
-    /* apiError is used to display any errors that occur during API interactions (e.g., starting/stopping the spectrometer, setting the index), providing feedback to the user and allowing for retrying actions */
+    /* actionError stores errors from client-triggered actions, while initialError continues to reflect the latest server-fetched timestamps state */
   }
   const [isPendingStart, startControlTransition] = useTransition();
   {
@@ -129,6 +129,7 @@ export function Spectrum({
   const connectionStatus = connectionStatusMap[readyState];
   const isConnectionOpen = connectionStatus === "Open";
   const isRunning = controlState === "start" || isPendingStart;
+  const apiError = actionError ?? initialError;
   const displayedIndex = draftIndex ?? confirmedIndex;
   const chartData = (lastJsonMessage?.spectrum ?? []).map(
     (absorbance, index) => ({
@@ -151,11 +152,11 @@ export function Spectrum({
     const result = await setIndex(nextIndex);
 
     if (!result.ok) {
-      setApiError(result.error);
+      setActionError(result.error);
       setPendingIndex(null);
       setDraftIndex(null);
     } else {
-      setApiError(null);
+      setActionError(null);
     }
   };
 
@@ -171,12 +172,12 @@ export function Spectrum({
         const result = await start();
 
         if (!result.ok) {
-          setApiError(result.error);
+          setActionError(result.error);
           setControlState("stop");
           return;
         }
 
-        setApiError(null);
+        setActionError(null);
       });
 
       return;
@@ -186,12 +187,12 @@ export function Spectrum({
       const result = await stop();
 
       if (!result.ok) {
-        setApiError(result.error);
+        setActionError(result.error);
         setControlState("start");
         return;
       }
 
-      setApiError(null);
+      setActionError(null);
     });
   };
 
@@ -215,7 +216,10 @@ export function Spectrum({
           <button
             type="button"
             className="inline-flex items-center gap-2 self-start rounded-md border border-current px-3 py-2 font-medium transition-opacity hover:opacity-80"
-            onClick={() => router.refresh()}
+            onClick={() => {
+              setActionError(null);
+              router.refresh();
+            }}
           >
             <RotateCcw className="size-4" />
             Retry
