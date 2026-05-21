@@ -6,6 +6,9 @@ import { connection } from "next/server";
 export default async function Home() {
   await connection();
   const timestamps = getTimestamps();
+  {
+    /* no await is used here because the component will suspend until the promise resolves */
+  }
 
   return (
     <main className="flex flex-col items-center container mx-auto p-8 gap-4">

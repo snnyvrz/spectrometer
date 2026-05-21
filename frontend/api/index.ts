@@ -47,6 +47,7 @@ const parseResponse = async <T>(response: Response): Promise<T> => {
   return json.data;
 };
 
+// A simple wrapper around fetch for GET requests that returns the parsed JSON data or throws an error
 export const get = async <T>(endpoint: string): Promise<T> => {
   try {
     const response = await fetch(`${BASE_URL}/${endpoint}`);
@@ -56,6 +57,7 @@ export const get = async <T>(endpoint: string): Promise<T> => {
   }
 };
 
+// A safe version of get that returns an ApiResult instead of throwing errors
 export const safeGet = async <T>(endpoint: string): Promise<ApiResult<T>> => {
   try {
     return {
@@ -70,6 +72,7 @@ export const safeGet = async <T>(endpoint: string): Promise<ApiResult<T>> => {
   }
 };
 
+// A simple wrapper around fetch for PATCH requests that returns the parsed JSON data or throws an error
 export const patch = async <T>(
   endpoint: string,
   body?: unknown,
@@ -87,6 +90,7 @@ export const patch = async <T>(
   }
 };
 
+// A safe version of patch that returns an ApiResult instead of throwing errors
 export const safePatch = async <T>(
   endpoint: string,
   body?: unknown,

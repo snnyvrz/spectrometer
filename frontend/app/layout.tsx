@@ -4,7 +4,10 @@ import { Suspense } from "react";
 import { IBM_Plex_Sans } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const ibmPlexSans = IBM_Plex_Sans({subsets:['latin'],variable:'--font-sans'});
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 export const metadata = {
   title: "Monipa",
@@ -19,9 +22,14 @@ export default function RootLayout({
 }) {
   return (
     <>
-      <html lang="en" suppressHydrationWarning className={cn("font-sans", ibmPlexSans.variable)}>
+      <html
+        lang="en"
+        suppressHydrationWarning
+        className={cn("font-sans", ibmPlexSans.variable)}
+      >
         <head />
         <body suppressHydrationWarning>
+          {/* The ThemeProvider is wrapped in Suspense to prevent hydration mismatches due to the default theme being determined on the client side */}
           <Suspense>
             <ThemeProvider
               attribute="class"

@@ -20,11 +20,14 @@ class SpectrometerSimulator:
         self.current_spectrum: list[float] = self.data[self.current_index].spectrum
         self.running: bool = False
         self._running_event = asyncio.Event()
-        self._lock = asyncio.Lock()
-        self._subscribers: set[asyncio.Queue] = set()
-        self._subscribers_lock = asyncio.Lock()
+        self._lock = asyncio.Lock()  # Protects access to current state and running flag
+        self._subscribers: set[asyncio.Queue] = set()  # Set of subscriber queues
+        self._subscribers_lock = (
+            asyncio.Lock()
+        )  # Protects access to the subscribers set
 
     async def _broadcast_update(self) -> None:
+        """Broadcast the latest state to all subscribers."""
         timestamp, index, spectrum = await self.get_latest_state()
 
         payload = {
@@ -39,11 +42,11 @@ class SpectrometerSimulator:
         for queue in subscribers:
             if queue.full():
                 try:
-                    queue.get_nowait()
+                    queue.get_nowait()  # Remove the old item if the queue is full
                 except asyncio.QueueEmpty:
                     pass
 
-            queue.put_nowait(payload)
+            queue.put_nowait(payload)  # Add the new item to the queue
 
     def _load_csv(self) -> list[SpectrumData]:
         """Load the CSV file and return a list of SpectrumData objects."""
@@ -68,6 +71,8 @@ class SpectrometerSimulator:
         return data
 
     def _setup_logger(self) -> logging.Logger:
+        """Set up a logger for the simulator."""
+
         logger = logging.getLogger("SimulationLogger")
         logger.setLevel(logging.DEBUG)
         ch = logging.StreamHandler()
@@ -86,7 +91,7 @@ class SpectrometerSimulator:
         next_index = (current_index + 1) % len(self.data)
 
         if next_index == 0:
-            return 1.0
+            return 1.0  # Sleep for 1 second if we've reached the end of the data
 
         next_timestamp = self.data[next_index].timestamp
         return (next_timestamp - current_timestamp).total_seconds()
@@ -108,13 +113,17 @@ class SpectrometerSimulator:
             )
 
     def get_timestamps(self) -> list[datetime]:
+        """Return a list of all timestamps in the data."""
+
         return [data.timestamp for data in self.data]
 
     async def get_index(self) -> int:
+        """Return the current index."""
         async with self._lock:
             return self.current_index
 
     async def set_timestamp(self, timestamp: datetime):
+        """Set the current timestamp and update the corresponding index and spectrum."""
         if timestamp in self.get_timestamps():
             index = next(
                 i for i, data in enumerate(self.data) if data.timestamp == timestamp
@@ -132,6 +141,7 @@ class SpectrometerSimulator:
             raise ValueError(f"Timestamp {timestamp} not found in data.")
 
     async def set_index(self, index: int):
+        """Set the current index and update the corresponding timestamp and spectrum."""
         current_index = index % len(self.data)
         spectrum_data = self.data[current_index]
 
@@ -144,6 +154,7 @@ class SpectrometerSimulator:
         await self._broadcast_update()
 
     async def start(self):
+        """Start the simulation."""
         async with self._lock:
             if self.running:
                 raise ValueError("Simulation is already running.")
@@ -151,6 +162,7 @@ class SpectrometerSimulator:
         self._running_event.set()
 
     async def stop(self):
+        """Stop the simulation."""
         async with self._lock:
             if not self.running:
                 raise ValueError("Simulation is already stopped.")
@@ -158,13 +170,16 @@ class SpectrometerSimulator:
         self._running_event.clear()
 
     async def run(self):
+        """Run the simulation."""
         try:
             while True:
                 async with self._lock:
                     running = self.running
 
                 if not running:
-                    await self._running_event.wait()
+                    await (
+                        self._running_event.wait()
+                    )  # Wait until the simulation is started
                     continue
 
                 async with self._lock:
@@ -187,6 +202,7 @@ class SpectrometerSimulator:
             self.logger.info("Simulation stopped.")
 
     async def subscribe(self) -> asyncio.Queue:
+        """Subscribe to simulation updates."""
         queue: asyncio.Queue = asyncio.Queue(maxsize=1)
 
         async with self._subscribers_lock:
@@ -205,5 +221,6 @@ class SpectrometerSimulator:
         return queue
 
     async def unsubscribe(self, queue: asyncio.Queue) -> None:
+        """Unsubscribe from simulation updates."""
         async with self._subscribers_lock:
             self._subscribers.discard(queue)

@@ -51,14 +51,41 @@ export function Spectrum({
 }) {
   const router = useRouter();
   const [shouldConnect, setShouldConnect] = useState(false);
+  {
+    /* shouldConnect is used to control whether the WebSocket connection should be established, allowing the user to disconnect without unmounting the component */
+  }
   const [confirmedIndex, setConfirmedIndex] = useState(0);
+  {
+    /* confirmedIndex represents the last index that has been confirmed by the backend, ensuring that the displayed spectrum corresponds to a valid timestamp */
+  }
   const [draftIndex, setDraftIndex] = useState<number | null>(null);
+  {
+    /* draftIndex is used to optimistically update the UI when the user interacts with the slider, allowing for a responsive experience while waiting for the backend confirmation */
+  }
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
+  {
+    /* pendingIndex tracks the index that is currently being updated on the backend, helping to manage the state of the slider and prevent conflicting updates */
+  }
   const [controlState, setControlState] = useState<"start" | "stop">("stop");
+  {
+    /* controlState manages the current state of the spectrometer (running or stopped), allowing the UI to reflect the appropriate controls and status */
+  }
   const { timestamps: allTimestamps, error: initialError } = use(timestamps);
+  {
+    /* allTimestamps holds the array of timestamps fetched from the backend, while initialError captures any error that occurs during the fetching process, enabling error handling in the UI */
+  }
   const [apiError, setApiError] = useState<string | null>(initialError);
+  {
+    /* apiError is used to display any errors that occur during API interactions (e.g., starting/stopping the spectrometer, setting the index), providing feedback to the user and allowing for retrying actions */
+  }
   const [isPendingStart, startControlTransition] = useTransition();
+  {
+    /* isPendingStart tracks whether a start action is currently pending, allowing the UI to disable controls and provide feedback while waiting for the backend response when starting the spectrometer */
+  }
   const [isPendingStop, stopControlTransition] = useTransition();
+  {
+    /* isPendingStop tracks whether a stop action is currently pending, allowing the UI to disable controls and provide feedback while waiting for the backend response when stopping the spectrometer */
+  }
 
   const hasTimestamps = allTimestamps.length > 0;
   const pendingIndexRef = useRef(pendingIndex);
