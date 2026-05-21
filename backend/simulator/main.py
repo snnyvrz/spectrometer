@@ -145,11 +145,15 @@ class SpectrometerSimulator:
 
     async def start(self):
         async with self._lock:
+            if self.running:
+                raise ValueError("Simulation is already running.")
             self.running = True
         self._running_event.set()
 
     async def stop(self):
         async with self._lock:
+            if not self.running:
+                raise ValueError("Simulation is already stopped.")
             self.running = False
         self._running_event.clear()
 

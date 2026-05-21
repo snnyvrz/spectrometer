@@ -27,13 +27,19 @@ type SimulatorDep = Annotated[
 
 @router.patch("/start", response_model=ApiResponse[SimulationState])
 async def start_simulation(simulator: SimulatorDep):
-    await simulator.start()
+    try:
+        await simulator.start()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"data": {"running": True}}
 
 
 @router.patch("/stop", response_model=ApiResponse[SimulationState])
 async def stop_simulation(simulator: SimulatorDep):
-    await simulator.stop()
+    try:
+        await simulator.stop()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"data": {"running": False}}
 
 
