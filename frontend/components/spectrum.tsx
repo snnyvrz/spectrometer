@@ -51,12 +51,9 @@ export function Spectrum({
 }) {
   const router = useRouter();
   const [shouldConnect, setShouldConnect] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [isAdjustingIndex, setIsAdjustingIndex] = useState(false);
-  const [pendingSelectedIndex, setPendingSelectedIndex] = useState<
-    number | null
-  >(null);
-  const [isUpdatingIndex, setIsUpdatingIndex] = useState(false);
+  const [confirmedIndex, setConfirmedIndex] = useState(0);
+  const [draftIndex, setDraftIndex] = useState<number | null>(null);
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
   const [controlState, setControlState] = useState<"start" | "stop">("stop");
   const { timestamps: allTimestamps, error: initialError } = use(timestamps);
   const [apiError, setApiError] = useState<string | null>(initialError);
@@ -64,18 +61,15 @@ export function Spectrum({
   const [isPendingStop, stopControlTransition] = useTransition();
 
   const hasTimestamps = allTimestamps.length > 0;
-  const allTimestampsRef = useRef(allTimestamps);
-  const isAdjustingIndexRef = useRef(isAdjustingIndex);
-  const pendingSelectedIndexRef = useRef(pendingSelectedIndex);
+  const pendingIndexRef = useRef(pendingIndex);
 
   useEffect(() => {
-    allTimestampsRef.current = allTimestamps;
-    isAdjustingIndexRef.current = isAdjustingIndex;
-    pendingSelectedIndexRef.current = pendingSelectedIndex;
-  }, [allTimestamps, isAdjustingIndex, pendingSelectedIndex]);
+    pendingIndexRef.current = pendingIndex;
+  }, [pendingIndex]);
 
   const { lastJsonMessage, readyState } = useWebSocket<{
     timestamp: string;
+    index: number;
     spectrum: number[];
   }>(
     `${WEBSOCKET_BASE_URL}/ws/spectrum`,
@@ -83,28 +77,15 @@ export function Spectrum({
       onMessage: (event) => {
         try {
           const parsedMessage = JSON.parse(event.data as string) as {
-            timestamp: string;
+            index?: number;
           };
-          const nextIndex = allTimestampsRef.current.indexOf(
-            parsedMessage.timestamp,
-          );
 
-          if (isAdjustingIndexRef.current) {
-            return;
-          }
+          if (typeof parsedMessage.index === "number") {
+            setConfirmedIndex(parsedMessage.index);
 
-          if (
-            pendingSelectedIndexRef.current !== null &&
-            nextIndex !== pendingSelectedIndexRef.current
-          ) {
-            return;
-          }
-
-          if (nextIndex >= 0) {
-            setSelectedIndex(nextIndex);
-
-            if (pendingSelectedIndexRef.current === nextIndex) {
-              setPendingSelectedIndex(null);
+            if (pendingIndexRef.current === parsedMessage.index) {
+              setPendingIndex(null);
+              setDraftIndex(null);
             }
           }
         } catch {
@@ -121,6 +102,7 @@ export function Spectrum({
   const connectionStatus = connectionStatusMap[readyState];
   const isConnectionOpen = connectionStatus === "Open";
   const isRunning = controlState === "start" || isPendingStart;
+  const displayedIndex = draftIndex ?? confirmedIndex;
   const chartData = (lastJsonMessage?.spectrum ?? []).map(
     (absorbance, index) => ({
       wavenumber: index + 1000,
@@ -130,27 +112,24 @@ export function Spectrum({
 
   const handleIndexCommit = async (value: number[]) => {
     if (!hasTimestamps) {
-      setIsAdjustingIndex(false);
+      setDraftIndex(null);
       return;
     }
 
     const nextIndex = value[0] ?? 0;
 
-    setIsAdjustingIndex(false);
-    setSelectedIndex(nextIndex);
-    setPendingSelectedIndex(nextIndex);
-    setIsUpdatingIndex(true);
+    setDraftIndex(nextIndex);
+    setPendingIndex(nextIndex);
 
     const result = await setIndex(nextIndex);
 
     if (!result.ok) {
       setApiError(result.error);
-      setPendingSelectedIndex(null);
+      setPendingIndex(null);
+      setDraftIndex(null);
     } else {
       setApiError(null);
     }
-
-    setIsUpdatingIndex(false);
   };
 
   const handleControlChange = (value: string) => {
@@ -195,8 +174,8 @@ export function Spectrum({
   const isStopDisabled =
     !isConnectionOpen || controlState === "stop" || isPendingStop;
   const isSliderDisabled =
-    isRunning || isUpdatingIndex || !isConnectionOpen || !hasTimestamps;
-  const currentTimestamp = hasTimestamps ? allTimestamps[selectedIndex] : null;
+    isRunning || pendingIndex !== null || !isConnectionOpen || !hasTimestamps;
+  const currentTimestamp = hasTimestamps ? allTimestamps[displayedIndex] : null;
 
   return (
     <div className="w-full max-w-4xl border rounded-lg border-primary bg-card p-6">
@@ -271,10 +250,9 @@ export function Spectrum({
         min={0}
         max={Math.max(allTimestamps.length - 1, 0)}
         step={1}
-        value={[selectedIndex]}
+        value={[displayedIndex]}
         onValueChange={(value) => {
-          setIsAdjustingIndex(true);
-          setSelectedIndex(value[0] ?? 0);
+          setDraftIndex(value[0] ?? 0);
         }}
         onValueCommit={handleIndexCommit}
         disabled={isSliderDisabled}
