@@ -12,5 +12,11 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./test/setup/vitest.setup.ts"],
     exclude: ["e2e/**", "node_modules/**", ".next/**"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      include: ["api/**", "components/**", "hooks/**", "lib/**"],
+      exclude: ["**/__tests__/**", "**/ui/**", "node_modules/**"],
+    },
   },
 });

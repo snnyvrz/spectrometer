@@ -12,6 +12,7 @@
     "prepare": "cd .. && frontend/node_modules/.bin/husky .husky",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test"
   },
   "dependencies": {

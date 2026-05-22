@@ -9,10 +9,13 @@ frontend/.next
 .ruff_cache/
 backend/.ruff_cache/
 backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
 backend/tests/
 frontend/**/__tests__/
 frontend/e2e/
 frontend/test/
+frontend/coverage/
 frontend/test-results/
 frontend/playwright-report/
 frontend/playwright.config.ts

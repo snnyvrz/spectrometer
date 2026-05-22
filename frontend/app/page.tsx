@@ -12,7 +12,7 @@ export default async function Home() {
 
   return (
     <main className="flex flex-col items-center container mx-auto p-8 gap-4">
-      <div className="w-full max-w-4xl p-2 border border-primary rounded-lg">
+      <div className="w-full max-w-4xl p-6 border border-primary rounded-lg">
         <p className="text-lg text-gray-600 text-left">
           First you need to connect to the server, then you can control the
           simulator and view the data in real-time.
