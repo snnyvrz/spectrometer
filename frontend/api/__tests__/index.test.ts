@@ -96,4 +96,87 @@ describe("api helpers", () => {
       error: "Missing response data",
     });
   });
+
+  it("falls back to a generic error for non-Error failures", async () => {
+    await loadApi();
+
+    vi.mocked(fetch).mockRejectedValue("network down");
+
+    await expect(api.safeGet("simulation/timestamps")).resolves.toEqual({
+      data: null,
+      error: "Request failed",
+    });
+  });
+
+  it("reports status errors when a non-json error response is returned", async () => {
+    await loadApi();
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => {
+        throw new Error("not json");
+      },
+    } as Response);
+
+    await expect(api.get("simulation/timestamps")).rejects.toThrow(
+      "Request failed with status 503",
+    );
+  });
+
+  it("rejects invalid successful responses that cannot be parsed", async () => {
+    await loadApi();
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new Error("not json");
+      },
+    } as Response);
+
+    await expect(api.get("simulation/timestamps")).rejects.toThrow(
+      "Invalid API response",
+    );
+  });
+
+  it("uses a default message when an error payload omits the message", async () => {
+    await loadApi();
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        data: null,
+        error: null,
+      }),
+    } as Response);
+
+    await expect(api.patch("simulation/stop")).rejects.toThrow(
+      "Request failed",
+    );
+  });
+
+  it("omits the patch body when no payload is provided", async () => {
+    await loadApi();
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: { ok: true },
+        error: null,
+      }),
+    } as Response);
+
+    await expect(
+      api.patch<{ ok: boolean }>("simulation/start"),
+    ).resolves.toEqual({
+      ok: true,
+    });
+
+    expect(fetch).toHaveBeenCalledWith("http://api.test/simulation/start", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: undefined,
+    });
+  });
 });
