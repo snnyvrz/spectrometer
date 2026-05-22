@@ -13,6 +13,10 @@ class SimulationState(BaseModel):
     running: bool
 
 
+class HealthPayload(BaseModel):
+    status: str
+
+
 class SpectrumPayload(BaseModel):
     timestamp: datetime
     index: int

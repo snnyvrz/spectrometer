@@ -37,6 +37,13 @@ def test_app_lifespan_initializes_simulator_and_shuts_down_cleanly() -> None:
         assert isinstance(simulator, SpectrometerSimulator)
 
 
+def test_health_endpoint_reports_backend_ready(client: TestClient) -> None:
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"data": {"status": "ok"}}
+
+
 def test_start_when_already_running_returns_400(client: TestClient) -> None:
     simulator = get_simulator(client)
     simulator.running = True

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from simulator.main import SpectrometerSimulator
 from .routes import router
+from .schemas import ApiResponse, HealthPayload
 from .settings import get_settings
 
 
@@ -36,6 +37,11 @@ app.add_middleware(
 )
 
 app.include_router(router)
+
+
+@app.get("/health", response_model=ApiResponse[HealthPayload])
+async def health() -> dict[str, dict[str, str]]:
+    return {"data": {"status": "ok"}}
 
 
 @app.websocket("/ws/spectrum")
