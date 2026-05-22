@@ -3,7 +3,7 @@
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import type { TimestampsResult } from "@/api/fetch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useSpectrumController } from "@/components/use-spectrum-controller";
+import { useSpectrumController } from "@/hooks/use-spectrum-controller";
 
 import {
   ChartContainer,

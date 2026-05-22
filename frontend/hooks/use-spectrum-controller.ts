@@ -95,7 +95,7 @@ export function useSpectrumController({
   const isStopDisabled =
     !isConnectionOpen || controlState === "stop" || isPendingStop;
   const isSliderDisabled =
-    isRunning || pendingIndex !== null || !isConnectionOpen || !hasTimestamps;
+    pendingIndex !== null || !isConnectionOpen || !hasTimestamps;
   const currentTimestamp = hasTimestamps ? allTimestamps[displayedIndex] : null;
 
   const handleIndexCommit = async (value: number[]) => {

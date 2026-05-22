@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useSpectrumController } from "@/components/use-spectrum-controller";
+import { useSpectrumController } from "@/hooks/use-spectrum-controller";
 
 type SocketOptions = {
   onMessage?: (event: MessageEvent<string>) => void;

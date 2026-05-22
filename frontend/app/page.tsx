@@ -14,12 +14,8 @@ export default async function Home() {
     <main className="flex flex-col items-center container mx-auto p-8 gap-4">
       <div className="w-full max-w-4xl p-2 border border-primary rounded-lg">
         <p className="text-lg text-gray-600 text-left">
-          1. First you need to connect to the server, then you can control the
+          First you need to connect to the server, then you can control the
           simulator and view the data in real-time.
-        </p>
-        <p className="text-lg text-gray-600 text-left">
-          2. The slider can be used to adjust the index, only when the simulator
-          is stopped.
         </p>
       </div>
       <Dashboard timestamps={timestamps} />
