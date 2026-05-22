@@ -1,5 +1,6 @@
 .git
 .gitignore
+.husky
 **/.venv
 **/__pycache__
 **/*.pyc
@@ -8,3 +9,15 @@ frontend/.next
 .ruff_cache/
 backend/.ruff_cache/
 backend/.pytest_cache/
+backend/tests/
+frontend/**/__tests__/
+frontend/e2e/
+frontend/test/
+frontend/test-results/
+frontend/playwright-report/
+frontend/playwright.config.ts
+frontend/vitest.config.ts
+.env
+.env.*
+README.md
+example-spectrum.png

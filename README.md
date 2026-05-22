@@ -4,10 +4,9 @@
 
 Requires Docker and Docker Compose to be installed.
 
-Create these environment files before running:
+Create this environment file before running if you want to override the defaults:
 
-- Copy `backend/.env.example` to `backend/.env`
-- Copy `frontend/.env.example` to `frontend/.env`
+- Copy `.env.example` to `.env`
 
 From the repository root:
 

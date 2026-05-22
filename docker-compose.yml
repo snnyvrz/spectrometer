@@ -1,10 +1,13 @@
 services:
   backend:
+    env_file:
+      - path: .env
+        required: false
     build:
       context: .
       dockerfile: backend/Dockerfile
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     healthcheck:
       test:
         [
@@ -19,16 +22,19 @@ services:
       start_period: 10s
 
   frontend:
+    env_file:
+      - path: .env
+        required: false
     build:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
-        NEXT_PUBLIC_WS_BASE_URL: ws://localhost:8000
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+        NEXT_PUBLIC_WS_BASE_URL: ${NEXT_PUBLIC_WS_BASE_URL:-ws://localhost:8000}
     depends_on:
       backend:
         condition: service_healthy
     environment:
-      API_BASE_URL: http://backend:8000
+      API_BASE_URL: ${API_BASE_URL:-http://backend:8000}
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
