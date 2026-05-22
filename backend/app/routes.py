@@ -73,9 +73,6 @@ async def get_index(simulator: SimulatorDep):
 
 @router.patch("/index", response_model=ApiResponse[IndexPayload])
 async def set_index(payload: SetIndexRequest, simulator: SimulatorDep):
-    try:
-        await simulator.set_index(payload.index)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    await simulator.set_index(payload.index)
     index = await simulator.get_index()
     return {"data": {"index": index}}

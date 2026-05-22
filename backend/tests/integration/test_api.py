@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from simulator.main import SpectrometerSimulator
+from app.main import app
 
 
 def get_simulator(client: TestClient) -> SpectrometerSimulator:
@@ -27,6 +28,13 @@ def test_start_and_stop_simulation_endpoints_toggle_running_state(
     assert stop_response.status_code == 200
     assert stop_response.json() == {"data": {"running": False}}
     assert simulator.running is False
+
+
+def test_app_lifespan_initializes_simulator_and_shuts_down_cleanly() -> None:
+    with TestClient(app) as client:
+        simulator = get_simulator(client)
+
+        assert isinstance(simulator, SpectrometerSimulator)
 
 
 def test_start_when_already_running_returns_400(client: TestClient) -> None:
@@ -76,6 +84,39 @@ def test_get_timestamps_returns_all_available_timestamps(client: TestClient) -> 
     assert response.json() == {
         "data": {"timestamps": [item.timestamp.isoformat() for item in simulator.data]}
     }
+
+
+def test_set_timestamp_endpoint_updates_current_state(client: TestClient) -> None:
+    expected_index = 2
+    simulator = get_simulator(client)
+    expected = simulator.data[expected_index]
+
+    response = client.patch(
+        "/simulation/timestamp",
+        json={"timestamp": expected.timestamp.isoformat()},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "data": {
+            "timestamp": expected.timestamp.isoformat(),
+            "index": expected_index,
+            "spectrum": expected.spectrum,
+        }
+    }
+    assert simulator.current_index == expected_index
+    assert simulator.current_timestamp == expected.timestamp
+
+
+def test_get_index_returns_current_simulator_index(client: TestClient) -> None:
+    expected_index = 3
+    simulator = get_simulator(client)
+    simulator.current_index = expected_index
+
+    response = client.get("/simulation/index")
+
+    assert response.status_code == 200
+    assert response.json() == {"data": {"index": expected_index}}
 
 
 def test_set_index_endpoint_updates_current_state(client: TestClient) -> None:

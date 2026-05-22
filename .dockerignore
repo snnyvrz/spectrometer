@@ -24,3 +24,4 @@ frontend/vitest.config.ts
 .env.*
 README.md
 example-spectrum.png
+.pytest_cache/

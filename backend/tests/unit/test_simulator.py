@@ -1,5 +1,7 @@
 from contextlib import suppress
 from datetime import timedelta
+from typing import cast
+from unittest.mock import Mock
 
 import asyncio
 import pytest
@@ -48,6 +50,28 @@ async def test_set_timestamp_raises_for_unknown_timestamp(
 
 
 @pytest.mark.asyncio
+async def test_get_latest_spectrum_returns_a_copy(
+    simulator: SpectrometerSimulator,
+) -> None:
+    spectrum = await simulator.get_latest_spectrum()
+
+    spectrum.append(-1.0)
+
+    assert spectrum != simulator.current_spectrum
+    assert simulator.current_spectrum == simulator.data[0].spectrum
+
+
+@pytest.mark.asyncio
+async def test_get_latest_timestamp_returns_current_timestamp(
+    simulator: SpectrometerSimulator,
+) -> None:
+    timestamp = await simulator.get_latest_timestamp()
+
+    assert timestamp == simulator.current_timestamp
+    assert timestamp == simulator.data[0].timestamp
+
+
+@pytest.mark.asyncio
 async def test_subscribe_returns_current_state_immediately(
     simulator: SpectrometerSimulator,
 ) -> None:
@@ -81,6 +105,28 @@ async def test_subscribe_receives_broadcast_when_state_changes(
         "index": expected_index,
         "spectrum": expected_data.spectrum,
     }
+
+
+@pytest.mark.asyncio
+async def test_broadcast_update_keeps_going_when_full_queue_is_already_empty(
+    simulator: SpectrometerSimulator,
+) -> None:
+    queue = Mock()
+    queue.full.return_value = True
+    queue.get_nowait.side_effect = asyncio.QueueEmpty
+    queue.put_nowait = Mock()
+    simulator._subscribers = {cast(asyncio.Queue, queue)}
+
+    await simulator._broadcast_update()
+
+    queue.get_nowait.assert_called_once_with()
+    queue.put_nowait.assert_called_once_with(
+        {
+            "timestamp": simulator.data[0].timestamp.isoformat(),
+            "index": 0,
+            "spectrum": simulator.data[0].spectrum,
+        }
+    )
 
 
 @pytest.mark.asyncio
@@ -120,6 +166,23 @@ def test_get_sleep_time_returns_one_second_when_wrapping(
     sleep_time = simulator._get_sleep_time(last_index, current_timestamp)
 
     assert sleep_time == 1.0
+
+
+def test_load_csv_exits_when_csv_file_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    simulator = SpectrometerSimulator.__new__(SpectrometerSimulator)
+    simulator.logger = Mock()
+
+    def raise_file_not_found(*_args: object, **_kwargs: object) -> None:
+        raise FileNotFoundError
+
+    monkeypatch.setattr("simulator.main.pd.read_csv", raise_file_not_found)
+
+    with pytest.raises(SystemExit, match="1"):
+        simulator._load_csv()
+
+    simulator.logger.error.assert_called_once()
 
 
 @pytest.mark.asyncio
