@@ -1,0 +1,9 @@
+pnpm --dir frontend lint
+
+staged_frontend_files=$(git diff --cached --name-only --diff-filter=ACMR -- frontend)
+
+if [ -n "$staged_frontend_files" ]; then
+  frontend_relative_files=$(printf '%s\n' "$staged_frontend_files" | sed 's#^frontend/##')
+  printf '%s\n' "$frontend_relative_files" | xargs pnpm --dir frontend exec prettier --write --ignore-unknown
+  printf '%s\n' "$staged_frontend_files" | xargs git add --
+fi
