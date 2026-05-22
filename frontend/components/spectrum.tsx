@@ -1,9 +1,9 @@
 "use client";
 
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
-import { start, stop, setIndex } from "@/api/actions";
 import type { TimestampsResult } from "@/api/fetch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useSpectrumController } from "@/components/use-spectrum-controller";
 
 import {
   ChartContainer,
@@ -12,30 +12,11 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
-import useWebSocket, { ReadyState } from "react-use-websocket";
-import { use, useEffect, useRef, useState, useTransition } from "react";
 import { Slider } from "./ui/slider";
 import { Badge } from "./ui/badge";
 import { Toggle } from "./ui/toggle";
 import { AlertCircle, Link, Play, RotateCcw, Square } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-export type ConnectionStatus =
-  | "Connecting"
-  | "Open"
-  | "Closing"
-  | "Closed"
-  | "Uninstantiated";
-
-const connectionStatusMap: Record<ReadyState, ConnectionStatus> = {
-  [ReadyState.CONNECTING]: "Connecting",
-  [ReadyState.OPEN]: "Open",
-  [ReadyState.CLOSING]: "Closing",
-  [ReadyState.CLOSED]: "Closed",
-  [ReadyState.UNINSTANTIATED]: "Uninstantiated",
-};
-
-const WEBSOCKET_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL;
 
 const chartConfig = {
   absorbance: {
@@ -50,160 +31,26 @@ export function Spectrum({
   timestamps: Promise<TimestampsResult>;
 }) {
   const router = useRouter();
-  const [shouldConnect, setShouldConnect] = useState(false);
-  {
-    /* shouldConnect is used to control whether the WebSocket connection should be established, allowing the user to disconnect without unmounting the component */
-  }
-  const [confirmedIndex, setConfirmedIndex] = useState(0);
-  {
-    /* confirmedIndex represents the last index that has been confirmed by the backend, ensuring that the displayed spectrum corresponds to a valid timestamp */
-  }
-  const [draftIndex, setDraftIndex] = useState<number | null>(null);
-  {
-    /* draftIndex is used to optimistically update the UI when the user interacts with the slider, allowing for a responsive experience while waiting for the backend confirmation */
-  }
-  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
-  {
-    /* pendingIndex tracks the index that is currently being updated on the backend, helping to manage the state of the slider and prevent conflicting updates */
-  }
-  const [controlState, setControlState] = useState<"start" | "stop">("stop");
-  {
-    /* controlState manages the current state of the spectrometer (running or stopped), allowing the UI to reflect the appropriate controls and status */
-  }
-  const { timestamps: allTimestamps, error: initialError } = use(timestamps);
-  {
-    /* allTimestamps holds the array of timestamps fetched from the backend, while initialError captures any error that occurs during the fetching process, enabling error handling in the UI */
-  }
-  const [actionError, setActionError] = useState<string | null>(null);
-  {
-    /* actionError stores errors from client-triggered actions, while initialError continues to reflect the latest server-fetched timestamps state */
-  }
-  const [isPendingStart, startControlTransition] = useTransition();
-  {
-    /* isPendingStart tracks whether a start action is currently pending, allowing the UI to disable controls and provide feedback while waiting for the backend response when starting the spectrometer */
-  }
-  const [isPendingStop, stopControlTransition] = useTransition();
-  {
-    /* isPendingStop tracks whether a stop action is currently pending, allowing the UI to disable controls and provide feedback while waiting for the backend response when stopping the spectrometer */
-  }
-
-  const hasTimestamps = allTimestamps.length > 0;
-  const pendingIndexRef = useRef(pendingIndex);
-
-  useEffect(() => {
-    pendingIndexRef.current = pendingIndex;
-  }, [pendingIndex]);
-
-  const { lastJsonMessage, readyState } = useWebSocket<{
-    timestamp: string;
-    index: number;
-    spectrum: number[];
-  }>(
-    `${WEBSOCKET_BASE_URL}/ws/spectrum`,
-    {
-      onMessage: (event) => {
-        try {
-          const parsedMessage = JSON.parse(event.data as string) as {
-            index?: number;
-          };
-
-          if (typeof parsedMessage.index === "number") {
-            setConfirmedIndex(parsedMessage.index);
-
-            if (pendingIndexRef.current === parsedMessage.index) {
-              setPendingIndex(null);
-              setDraftIndex(null);
-            }
-          }
-        } catch {
-          return;
-        }
-      },
-      shouldReconnect: () => true,
-      reconnectAttempts: 10,
-      reconnectInterval: 3000,
-    },
+  const {
+    apiError,
+    chartData,
+    connectionStatus,
+    controlState,
+    currentTimestamp,
+    displayedIndex,
+    handleControlChange,
+    handleIndexCommit,
+    isConnectionOpen,
+    isDisconnectDisabled,
+    isSliderDisabled,
+    isStartDisabled,
+    isStopDisabled,
+    setActionError,
+    setDraftIndex,
+    setShouldConnect,
     shouldConnect,
-  );
-
-  const connectionStatus = connectionStatusMap[readyState];
-  const isConnectionOpen = connectionStatus === "Open";
-  const isRunning = controlState === "start" || isPendingStart;
-  const apiError = actionError ?? initialError;
-  const displayedIndex = draftIndex ?? confirmedIndex;
-  const chartData = (lastJsonMessage?.spectrum ?? []).map(
-    (absorbance, index) => ({
-      wavenumber: index + 1000,
-      absorbance: absorbance * 1000,
-    }),
-  );
-
-  const handleIndexCommit = async (value: number[]) => {
-    if (!hasTimestamps) {
-      setDraftIndex(null);
-      return;
-    }
-
-    const nextIndex = value[0] ?? 0;
-
-    setDraftIndex(nextIndex);
-    setPendingIndex(nextIndex);
-
-    const result = await setIndex(nextIndex);
-
-    if (!result.ok) {
-      setActionError(result.error);
-      setPendingIndex(null);
-      setDraftIndex(null);
-    } else {
-      setActionError(null);
-    }
-  };
-
-  const handleControlChange = (value: string) => {
-    if (!isConnectionOpen) {
-      return;
-    }
-
-    setControlState(value as "start" | "stop");
-
-    if (value === "start") {
-      startControlTransition(async () => {
-        const result = await start();
-
-        if (!result.ok) {
-          setActionError(result.error);
-          setControlState("stop");
-          return;
-        }
-
-        setActionError(null);
-      });
-
-      return;
-    }
-
-    stopControlTransition(async () => {
-      const result = await stop();
-
-      if (!result.ok) {
-        setActionError(result.error);
-        setControlState("start");
-        return;
-      }
-
-      setActionError(null);
-    });
-  };
-
-  const isDisconnectDisabled = shouldConnect && isRunning;
-  const isStartDisabled =
-    !isConnectionOpen || controlState === "start" || isPendingStart;
-  const isStopDisabled =
-    !isConnectionOpen || controlState === "stop" || isPendingStop;
-  const isSliderDisabled =
-    isRunning || pendingIndex !== null || !isConnectionOpen || !hasTimestamps;
-  const currentTimestamp = hasTimestamps ? allTimestamps[displayedIndex] : null;
+    timestampsCount,
+  } = useSpectrumController({ timestamps });
 
   return (
     <div className="w-full max-w-4xl border rounded-lg border-primary bg-card p-6">
@@ -279,7 +126,7 @@ export function Spectrum({
       <Slider
         className="py-8"
         min={0}
-        max={Math.max(allTimestamps.length - 1, 0)}
+        max={Math.max(timestampsCount - 1, 0)}
         step={1}
         value={[displayedIndex]}
         onValueChange={(value) => {
