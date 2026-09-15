@@ -20,6 +20,7 @@ class SpectrometerSimulator:
         self.current_spectrum: list[float] = self.data[self.current_index].spectrum
         self.running: bool = False
         self._running_event = asyncio.Event()
+        self._state_change_event = asyncio.Event()
         self._lock = asyncio.Lock()  # Protects access to current state and running flag
         self._subscribers: set[asyncio.Queue] = set()  # Set of subscriber queues
         self._subscribers_lock = (
@@ -141,6 +142,7 @@ class SpectrometerSimulator:
                 self.current_index = index
                 self.current_spectrum = spectrum
 
+            self._state_change_event.set()
             self.logger.debug(f"Timestamp set to: {timestamp}")
             await self._broadcast_update()
         else:
@@ -156,6 +158,7 @@ class SpectrometerSimulator:
             self.current_timestamp = spectrum_data.timestamp
             self.current_spectrum = spectrum_data.spectrum
 
+        self._state_change_event.set()
         self.logger.debug(f"Index set to: {current_index}")
         await self._broadcast_update()
 
@@ -175,6 +178,7 @@ class SpectrometerSimulator:
                 raise ValueError("Simulation is already stopped.")
             self.running = False
         self._running_event.clear()
+        self._state_change_event.set()
         await self._broadcast_update()
 
     async def run(self):
@@ -200,7 +204,13 @@ class SpectrometerSimulator:
 
                 self.logger.debug(f"Updated to timestamp: {current_timestamp}")
                 await self._broadcast_update()
-                await asyncio.sleep(sleep_time)
+                self._state_change_event.clear()
+                try:
+                    await asyncio.wait_for(
+                        self._state_change_event.wait(), timeout=sleep_time
+                    )
+                except TimeoutError:
+                    pass
 
                 async with self._lock:
                     self.current_index = (self.current_index + 1) % len(self.data)
