@@ -29,11 +29,13 @@ class SpectrometerSimulator:
     async def _broadcast_update(self) -> None:
         """Broadcast the latest state to all subscribers."""
         timestamp, index, spectrum = await self.get_latest_state()
+        running = await self.get_running()
 
         payload = {
             "timestamp": timestamp.isoformat(),
             "index": index,
             "spectrum": spectrum,
+            "running": running,
         }
 
         async with self._subscribers_lock:
@@ -111,6 +113,10 @@ class SpectrometerSimulator:
                 self.current_index,
                 list(self.current_spectrum),
             )
+
+    async def get_running(self) -> bool:
+        async with self._lock:
+            return self.running
 
     def get_timestamps(self) -> list[datetime]:
         """Return a list of all timestamps in the data."""
@@ -209,12 +215,14 @@ class SpectrometerSimulator:
             self._subscribers.add(queue)
 
         timestamp, index, spectrum = await self.get_latest_state()
+        running = await self.get_running()
 
         queue.put_nowait(
             {
                 "timestamp": timestamp.isoformat(),
                 "index": index,
                 "spectrum": spectrum,
+                "running": running,
             }
         )
 

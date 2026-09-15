@@ -83,6 +83,7 @@ async def test_subscribe_returns_current_state_immediately(
         "timestamp": simulator.data[0].timestamp.isoformat(),
         "index": 0,
         "spectrum": simulator.data[0].spectrum,
+        "running": False,
     }
 
 
@@ -104,6 +105,7 @@ async def test_subscribe_receives_broadcast_when_state_changes(
         "timestamp": expected_data.timestamp.isoformat(),
         "index": expected_index,
         "spectrum": expected_data.spectrum,
+        "running": False,
     }
 
 
@@ -125,6 +127,7 @@ async def test_broadcast_update_keeps_going_when_full_queue_is_already_empty(
             "timestamp": simulator.data[0].timestamp.isoformat(),
             "index": 0,
             "spectrum": simulator.data[0].spectrum,
+            "running": False,
         }
     )
 
@@ -222,6 +225,7 @@ async def test_run_waits_for_start_before_broadcasting(
             "timestamp": simulator.data[0].timestamp.isoformat(),
             "index": 0,
             "spectrum": simulator.data[0].spectrum,
+            "running": True,
         }
     finally:
         run_task.cancel()
@@ -250,6 +254,7 @@ async def test_run_advances_to_next_index_after_sleep(
             "timestamp": simulator.data[1].timestamp.isoformat(),
             "index": 1,
             "spectrum": simulator.data[1].spectrum,
+            "running": True,
         }
     finally:
         run_task.cancel()
