@@ -5,6 +5,8 @@
 - This is a two-service application: `backend/` is a FastAPI simulator and `frontend/` is a Next.js app; CI validates them independently from their respective directories.
 - The backend simulator loads the repository-root `spectra.csv` at startup. Keep that file available when running the backend or building/running Docker images; it is required runtime input.
 - The backend API is exposed under `/simulation`; the live spectrum stream is the `/ws/spectrum` WebSocket. `backend/app/main.py` owns app lifespan, simulator state, CORS, and WebSocket setup; `backend/app/routes.py` owns HTTP simulation routes.
+- Playback advances and broadcasts the next frame only after its interval elapses. Starting, stopping, or seeking interrupts the current wait so the simulator does not apply a stale frame afterward.
+- The frontend treats the server-confirmed simulation index as authoritative. Slider changes clear when the HTTP action confirms them, reconnects resynchronize through `simulation/index`, and an unconfirmed change times out after five seconds.
 - Frontend server-side API requests use `API_BASE_URL`. Browser-facing WebSocket/build configuration uses `NEXT_PUBLIC_WS_BASE_URL` (and `NEXT_PUBLIC_API_BASE_URL` for the public API value); do not substitute the Docker-internal `http://backend:8000` for browser-facing URLs.
 - The frontend Docker image uses Next standalone output and receives `NEXT_PUBLIC_*` values at build time; `API_BASE_URL` is a runtime environment value for the container.
 
