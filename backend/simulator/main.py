@@ -201,19 +201,23 @@ class SpectrometerSimulator:
                     current_index = self.current_index
                     current_timestamp = self.current_timestamp
                     sleep_time = self._get_sleep_time(current_index, current_timestamp)
+                    self._state_change_event.clear()
 
                 self.logger.debug(f"Updated to timestamp: {current_timestamp}")
                 await self._broadcast_update()
-                self._state_change_event.clear()
                 try:
                     await asyncio.wait_for(
                         self._state_change_event.wait(), timeout=sleep_time
                     )
                 except TimeoutError:
-                    pass
+                    next_index = (current_index + 1) % len(self.data)
+                    next_data = self.data[next_index]
+                    async with self._lock:
+                        self.current_index = next_index
+                        self.current_timestamp = next_data.timestamp
+                        self.current_spectrum = next_data.spectrum
+                    await self._broadcast_update()
 
-                async with self._lock:
-                    self.current_index = (self.current_index + 1) % len(self.data)
         except asyncio.CancelledError:
             self.logger.info("Simulation run cancelled.")
         finally:
