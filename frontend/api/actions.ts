@@ -1,6 +1,6 @@
 "use server";
 
-import { safePatch } from ".";
+import { safeGet, safePatch } from ".";
 
 export type ActionResult = {
   ok: boolean;
@@ -10,6 +10,18 @@ export type ActionResult = {
 export type SetIndexResult = ActionResult & {
   index?: number;
 };
+
+export async function getIndex(): Promise<SetIndexResult> {
+  const response = await safeGet<{ index: number }>("simulation/index");
+
+  return {
+    ok: response.error === null,
+    error: response.error
+      ? `Failed to get simulation index: ${response.error}`
+      : null,
+    ...(response.data ? { index: response.data.index } : {}),
+  };
+}
 
 export async function start(): Promise<ActionResult> {
   const response = await safePatch<unknown>("simulation/start");

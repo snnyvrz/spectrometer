@@ -1,16 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { setIndex, start, stop } from "@/api/actions";
+import { getIndex, setIndex, start, stop } from "@/api/actions";
 
 const safePatchMock = vi.fn();
+const safeGetMock = vi.fn();
 
 vi.mock("@/api", () => ({
+  safeGet: (...args: unknown[]) => safeGetMock(...args),
   safePatch: (...args: unknown[]) => safePatchMock(...args),
 }));
 
 describe("api actions", () => {
   beforeEach(() => {
     safePatchMock.mockReset();
+    safeGetMock.mockReset();
+  });
+
+  it("formats successful index reads", async () => {
+    safeGetMock.mockResolvedValue({ data: { index: 2 }, error: null });
+
+    await expect(getIndex()).resolves.toEqual({
+      ok: true,
+      error: null,
+      index: 2,
+    });
+    expect(safeGetMock).toHaveBeenCalledWith("simulation/index");
   });
 
   it("formats a successful start response", async () => {

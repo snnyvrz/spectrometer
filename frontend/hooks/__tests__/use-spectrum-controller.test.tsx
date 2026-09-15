@@ -5,29 +5,38 @@ import { useSpectrumController } from "@/hooks/use-spectrum-controller";
 
 type SocketOptions = {
   onMessage?: (event: MessageEvent<string>) => void;
+  onOpen?: (event: Event) => void;
   shouldReconnect?: () => boolean;
 };
 
-const { startMock, stopMock, setIndexMock, ReadyState, socketState } =
-  vi.hoisted(() => ({
-    startMock: vi.fn(),
-    stopMock: vi.fn(),
-    setIndexMock: vi.fn(),
-    ReadyState: {
-      UNINSTANTIATED: -1,
-      CONNECTING: 0,
-      OPEN: 1,
-      CLOSING: 2,
-      CLOSED: 3,
-    } as const,
-    socketState: {
-      lastJsonMessage: null as { spectrum: number[]; running: boolean } | null,
-      readyState: 3,
-      options: null as SocketOptions | null,
-    },
-  }));
+const {
+  getIndexMock,
+  startMock,
+  stopMock,
+  setIndexMock,
+  ReadyState,
+  socketState,
+} = vi.hoisted(() => ({
+  getIndexMock: vi.fn(),
+  startMock: vi.fn(),
+  stopMock: vi.fn(),
+  setIndexMock: vi.fn(),
+  ReadyState: {
+    UNINSTANTIATED: -1,
+    CONNECTING: 0,
+    OPEN: 1,
+    CLOSING: 2,
+    CLOSED: 3,
+  } as const,
+  socketState: {
+    lastJsonMessage: null as { spectrum: number[]; running: boolean } | null,
+    readyState: 3,
+    options: null as SocketOptions | null,
+  },
+}));
 
 vi.mock("@/api/actions", () => ({
+  getIndex: (...args: unknown[]) => getIndexMock(...args),
   start: (...args: unknown[]) => startMock(...args),
   stop: (...args: unknown[]) => stopMock(...args),
   setIndex: (...args: unknown[]) => setIndexMock(...args),
@@ -73,6 +82,7 @@ describe("useSpectrumController", () => {
     startMock.mockReset();
     stopMock.mockReset();
     setIndexMock.mockReset();
+    getIndexMock.mockReset();
   });
 
   it("derives disabled state while the websocket is closed", () => {
@@ -220,6 +230,23 @@ describe("useSpectrumController", () => {
     });
 
     expect(result.current.displayedIndex).toBe(0);
+  });
+
+  it("resynchronizes the confirmed index after reconnecting", async () => {
+    socketState.readyState = ReadyState.OPEN;
+    getIndexMock.mockResolvedValue({ ok: true, error: null, index: 1 });
+
+    const { result } = renderHook(() =>
+      useSpectrumController({ timestamps: createResolvedTimestamps() }),
+    );
+
+    await act(async () => {
+      await socketState.options?.onOpen?.({} as Event);
+    });
+
+    expect(getIndexMock).toHaveBeenCalledTimes(1);
+    expect(result.current.displayedIndex).toBe(1);
+    expect(result.current.currentTimestamp).toBe("2026-05-22T10:01:00Z");
   });
 
   it("accepts websocket index updates when no slider change is pending", async () => {

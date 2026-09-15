@@ -1,6 +1,6 @@
 "use client";
 
-import { start, stop, setIndex } from "@/api/actions";
+import { getIndex, start, stop, setIndex } from "@/api/actions";
 import type { TimestampsResult } from "@/api/fetch";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { use, useEffect, useRef, useState, useTransition } from "react";
@@ -90,6 +90,21 @@ export function useSpectrumController({
         } catch {
           return;
         }
+      },
+      onOpen: () => {
+        void getIndex().then((result) => {
+          if (!result.ok || typeof result.index !== "number") {
+            return;
+          }
+
+          setConfirmedIndex(result.index);
+
+          if (pendingIndexRef.current === result.index) {
+            clearIndexConfirmationTimeout();
+            setPendingIndex(null);
+            setDraftIndex(null);
+          }
+        });
       },
       shouldReconnect: () => true,
       reconnectAttempts: 10,
