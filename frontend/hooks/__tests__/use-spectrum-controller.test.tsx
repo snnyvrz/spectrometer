@@ -169,6 +169,36 @@ describe("useSpectrumController", () => {
     expect(result.current.isSliderDisabled).toBe(false);
   });
 
+  it("clears pending slider state after the confirmation timeout", async () => {
+    vi.useFakeTimers();
+    setIndexMock.mockReturnValue(new Promise(() => {}));
+
+    try {
+      socketState.readyState = ReadyState.OPEN;
+
+      const { result } = renderHook(() =>
+        useSpectrumController({ timestamps: createResolvedTimestamps() }),
+      );
+
+      act(() => {
+        void result.current.handleIndexCommit([1]);
+      });
+
+      expect(result.current.isSliderDisabled).toBe(true);
+
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      expect(result.current.isSliderDisabled).toBe(false);
+      expect(result.current.actionError).toBe(
+        "Timed out waiting for index confirmation",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("maps websocket spectra, ignores invalid messages, and exposes reconnect behavior", async () => {
     socketState.readyState = ReadyState.OPEN;
     socketState.lastJsonMessage = { spectrum: [0.1, 0.25], running: false };

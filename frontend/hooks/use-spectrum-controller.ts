@@ -28,6 +28,7 @@ const connectionStatusMap: Record<ReadyState, ConnectionStatus> = {
 };
 
 const WEBSOCKET_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL;
+const INDEX_CONFIRMATION_TIMEOUT_MS = 5000;
 
 export function useSpectrumController({
   timestamps,
@@ -46,6 +47,18 @@ export function useSpectrumController({
 
   const hasTimestamps = allTimestamps.length > 0;
   const pendingIndexRef = useRef(pendingIndex);
+  const indexConfirmationTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+
+  const clearIndexConfirmationTimeout = () => {
+    if (indexConfirmationTimeoutRef.current === null) {
+      return;
+    }
+
+    clearTimeout(indexConfirmationTimeoutRef.current);
+    indexConfirmationTimeoutRef.current = null;
+  };
 
   useEffect(() => {
     pendingIndexRef.current = pendingIndex;
@@ -69,6 +82,7 @@ export function useSpectrumController({
             setConfirmedIndex(parsedMessage.index);
 
             if (pendingIndexRef.current === parsedMessage.index) {
+              clearIndexConfirmationTimeout();
               setPendingIndex(null);
               setDraftIndex(null);
             }
@@ -83,6 +97,8 @@ export function useSpectrumController({
     },
     shouldConnect,
   );
+
+  useEffect(() => clearIndexConfirmationTimeout, []);
 
   const connectionStatus = connectionStatusMap[readyState];
   const isConnectionOpen = connectionStatus === "Open";
@@ -114,14 +130,23 @@ export function useSpectrumController({
 
     setDraftIndex(nextIndex);
     setPendingIndex(nextIndex);
+    clearIndexConfirmationTimeout();
+    indexConfirmationTimeoutRef.current = setTimeout(() => {
+      setActionError("Timed out waiting for index confirmation");
+      setPendingIndex(null);
+      setDraftIndex(null);
+      indexConfirmationTimeoutRef.current = null;
+    }, INDEX_CONFIRMATION_TIMEOUT_MS);
 
     const result = await setIndex(nextIndex);
 
     if (!result.ok) {
+      clearIndexConfirmationTimeout();
       setActionError(result.error);
       setPendingIndex(null);
       setDraftIndex(null);
     } else {
+      clearIndexConfirmationTimeout();
       setActionError(null);
       if (typeof result.index === "number") {
         setConfirmedIndex(result.index);
