@@ -279,3 +279,55 @@ async def test_run_advances_to_next_index_after_sleep(
         run_task.cancel()
         with suppress(asyncio.CancelledError):
             await run_task
+
+
+@pytest.mark.asyncio
+async def test_run_does_not_advance_when_stopped_during_wait(
+    simulator: SpectrometerSimulator,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(simulator, "_get_sleep_time", lambda *_: 1.0)
+    run_task = asyncio.create_task(simulator.run())
+
+    try:
+        await simulator.start()
+        await asyncio.sleep(0)
+        await simulator.stop()
+        await asyncio.sleep(0)
+
+        timestamp, index, spectrum = await simulator.get_latest_state()
+
+        assert index == 0
+        assert timestamp == simulator.data[0].timestamp
+        assert spectrum == simulator.data[0].spectrum
+    finally:
+        run_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await run_task
+
+
+@pytest.mark.asyncio
+async def test_run_does_not_advance_from_previous_frame_after_seek(
+    simulator: SpectrometerSimulator,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(simulator, "_get_sleep_time", lambda *_: 1.0)
+    run_task = asyncio.create_task(simulator.run())
+    expected_index = 2
+    expected_data = simulator.data[expected_index]
+
+    try:
+        await simulator.start()
+        await asyncio.sleep(0)
+        await simulator.set_index(expected_index)
+        await asyncio.sleep(0)
+
+        timestamp, index, spectrum = await simulator.get_latest_state()
+
+        assert index == expected_index
+        assert timestamp == expected_data.timestamp
+        assert spectrum == expected_data.spectrum
+    finally:
+        run_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await run_task
