@@ -126,9 +126,9 @@ describe("useSpectrumController", () => {
     });
   });
 
-  it("clears pending slider state after backend confirmation", async () => {
+  it("clears pending slider state from the backend confirmation", async () => {
     socketState.readyState = ReadyState.OPEN;
-    setIndexMock.mockResolvedValue({ ok: true, error: null });
+    setIndexMock.mockResolvedValue({ ok: true, error: null, index: 1 });
 
     const { result } = renderHook(() =>
       useSpectrumController({ timestamps: createResolvedTimestamps() }),
@@ -145,19 +145,28 @@ describe("useSpectrumController", () => {
 
     expect(setIndexMock).toHaveBeenCalledWith(1);
     expect(result.current.displayedIndex).toBe(1);
-    expect(result.current.isSliderDisabled).toBe(true);
-
-    await act(async () => {
-      socketState.options?.onMessage?.({
-        data: JSON.stringify({ index: 1 }),
-      } as MessageEvent<string>);
-    });
 
     await waitFor(() => {
       expect(result.current.displayedIndex).toBe(1);
       expect(result.current.isSliderDisabled).toBe(false);
       expect(result.current.currentTimestamp).toBe("2026-05-22T10:01:00Z");
     });
+  });
+
+  it("uses the action confirmation when the websocket update is missed", async () => {
+    socketState.readyState = ReadyState.OPEN;
+    setIndexMock.mockResolvedValue({ ok: true, error: null, index: 1 });
+
+    const { result } = renderHook(() =>
+      useSpectrumController({ timestamps: createResolvedTimestamps() }),
+    );
+
+    await act(async () => {
+      await result.current.handleIndexCommit([1]);
+    });
+
+    expect(result.current.displayedIndex).toBe(1);
+    expect(result.current.isSliderDisabled).toBe(false);
   });
 
   it("maps websocket spectra, ignores invalid messages, and exposes reconnect behavior", async () => {

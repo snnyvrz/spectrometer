@@ -123,6 +123,11 @@ export function useSpectrumController({
       setDraftIndex(null);
     } else {
       setActionError(null);
+      if (typeof result.index === "number") {
+        setConfirmedIndex(result.index);
+      }
+      setPendingIndex(null);
+      setDraftIndex(null);
     }
   };
 
