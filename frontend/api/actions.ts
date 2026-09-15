@@ -7,6 +7,10 @@ export type ActionResult = {
   error: string | null;
 };
 
+export type SetIndexResult = ActionResult & {
+  index?: number;
+};
+
 export async function start(): Promise<ActionResult> {
   const response = await safePatch<unknown>("simulation/start");
 
@@ -29,7 +33,7 @@ export async function stop(): Promise<ActionResult> {
   };
 }
 
-export async function setIndex(index: number): Promise<ActionResult> {
+export async function setIndex(index: number): Promise<SetIndexResult> {
   const response = await safePatch<{ index: number }>("simulation/index", {
     index,
   });
@@ -39,5 +43,6 @@ export async function setIndex(index: number): Promise<ActionResult> {
     error: response.error
       ? `Failed to set simulation index: ${response.error}`
       : null,
+    ...(response.data ? { index: response.data.index } : {}),
   };
 }

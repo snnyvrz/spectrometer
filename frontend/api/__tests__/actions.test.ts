@@ -60,6 +60,10 @@ describe("api actions", () => {
   it("formats successful index updates", async () => {
     safePatchMock.mockResolvedValue({ data: { index: 2 }, error: null });
 
-    await expect(setIndex(2)).resolves.toEqual({ ok: true, error: null });
+    await expect(setIndex(2)).resolves.toEqual({
+      ok: true,
+      error: null,
+      index: 2,
+    });
   });
 });
