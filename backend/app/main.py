@@ -1,5 +1,5 @@
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,14 +50,40 @@ async def spectrum(websocket: WebSocket):
 
     simulator = get_simulator_from_websocket(websocket)
     queue = await simulator.subscribe()
+    receive_task: asyncio.Task[object] | None = None
+    queue_task: asyncio.Task[object] | None = None
 
     try:
+        receive_task = asyncio.create_task(websocket.receive())
         while True:
-            payload = await queue.get()
-            await websocket.send_json(payload)
+            queue_task = asyncio.create_task(queue.get())
+            done, _ = await asyncio.wait(
+                {queue_task, receive_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            if receive_task in done:
+                receive_task.result()
+                receive_task = asyncio.create_task(websocket.receive())
+
+            if queue_task in done:
+                await websocket.send_json(queue_task.result())
+            else:
+                queue_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await queue_task
+            queue_task = None
 
     except WebSocketDisconnect:
         pass
 
     finally:
+        if receive_task is not None:
+            receive_task.cancel()
+            with suppress(asyncio.CancelledError, WebSocketDisconnect):
+                await receive_task
+        if queue_task is not None:
+            queue_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await queue_task
         await simulator.unsubscribe(queue)
