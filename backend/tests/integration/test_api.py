@@ -166,6 +166,7 @@ def test_websocket_sends_initial_state_and_index_updates(client: TestClient) -> 
             "timestamp": simulator.data[0].timestamp.isoformat(),
             "index": 0,
             "spectrum": simulator.data[0].spectrum,
+            "running": False,
         }
 
         response = client.patch("/simulation/index", json={"index": expected_index})
@@ -175,4 +176,5 @@ def test_websocket_sends_initial_state_and_index_updates(client: TestClient) -> 
             "timestamp": expected.timestamp.isoformat(),
             "index": expected_index,
             "spectrum": expected.spectrum,
+            "running": False,
         }

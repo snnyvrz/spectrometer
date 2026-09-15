@@ -204,6 +204,22 @@ async def test_start_and_stop_toggle_running_state(
 
 
 @pytest.mark.asyncio
+async def test_start_and_stop_broadcast_running_state(
+    simulator: SpectrometerSimulator,
+) -> None:
+    queue = await simulator.subscribe()
+    await queue.get()
+
+    await simulator.start()
+
+    assert (await queue.get())["running"] is True
+
+    await simulator.stop()
+
+    assert (await queue.get())["running"] is False
+
+
+@pytest.mark.asyncio
 async def test_run_waits_for_start_before_broadcasting(
     simulator: SpectrometerSimulator,
     monkeypatch: pytest.MonkeyPatch,
@@ -248,6 +264,9 @@ async def test_run_advances_to_next_index_after_sleep(
 
         first_payload = await asyncio.wait_for(queue.get(), timeout=0.05)
         second_payload = await asyncio.wait_for(queue.get(), timeout=0.05)
+
+        while second_payload["index"] != 1:
+            second_payload = await asyncio.wait_for(queue.get(), timeout=0.05)
 
         assert first_payload["index"] == 0
         assert second_payload == {

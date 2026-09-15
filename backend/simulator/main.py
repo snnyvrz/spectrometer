@@ -166,6 +166,7 @@ class SpectrometerSimulator:
                 raise ValueError("Simulation is already running.")
             self.running = True
         self._running_event.set()
+        await self._broadcast_update()
 
     async def stop(self):
         """Stop the simulation."""
@@ -174,6 +175,7 @@ class SpectrometerSimulator:
                 raise ValueError("Simulation is already stopped.")
             self.running = False
         self._running_event.clear()
+        await self._broadcast_update()
 
     async def run(self):
         """Run the simulation."""
