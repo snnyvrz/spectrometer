@@ -16,6 +16,7 @@ type SpectrumMessage = {
   timestamp: string;
   index: number;
   spectrum: number[];
+  running: boolean;
 };
 
 const connectionStatusMap: Record<ReadyState, ConnectionStatus> = {
@@ -57,7 +58,12 @@ export function useSpectrumController({
         try {
           const parsedMessage = JSON.parse(event.data as string) as {
             index?: number;
+            running?: boolean;
           };
+
+          if (typeof parsedMessage.running === "boolean") {
+            setControlState(parsedMessage.running ? "start" : "stop");
+          }
 
           if (typeof parsedMessage.index === "number") {
             setConfirmedIndex(parsedMessage.index);

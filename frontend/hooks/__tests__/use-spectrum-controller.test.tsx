@@ -21,7 +21,7 @@ const { startMock, stopMock, setIndexMock, ReadyState, socketState } =
       CLOSED: 3,
     } as const,
     socketState: {
-      lastJsonMessage: null as { spectrum: number[] } | null,
+      lastJsonMessage: null as { spectrum: number[]; running: boolean } | null,
       readyState: 3,
       options: null as SocketOptions | null,
     },
@@ -162,7 +162,7 @@ describe("useSpectrumController", () => {
 
   it("maps websocket spectra, ignores invalid messages, and exposes reconnect behavior", async () => {
     socketState.readyState = ReadyState.OPEN;
-    socketState.lastJsonMessage = { spectrum: [0.1, 0.25] };
+    socketState.lastJsonMessage = { spectrum: [0.1, 0.25], running: false };
 
     const { result } = renderHook(() =>
       useSpectrumController({ timestamps: createResolvedTimestamps() }),
@@ -201,6 +201,30 @@ describe("useSpectrumController", () => {
       expect(result.current.currentTimestamp).toBe("2026-05-22T10:01:00Z");
       expect(result.current.isSliderDisabled).toBe(false);
     });
+  });
+
+  it("syncs control state from websocket playback updates", async () => {
+    socketState.readyState = ReadyState.OPEN;
+
+    const { result } = renderHook(() =>
+      useSpectrumController({ timestamps: createResolvedTimestamps() }),
+    );
+
+    await act(async () => {
+      socketState.options?.onMessage?.({
+        data: JSON.stringify({ running: true }),
+      } as MessageEvent<string>);
+    });
+
+    expect(result.current.controlState).toBe("start");
+
+    await act(async () => {
+      socketState.options?.onMessage?.({
+        data: JSON.stringify({ running: false }),
+      } as MessageEvent<string>);
+    });
+
+    expect(result.current.controlState).toBe("stop");
   });
 
   it("returns early when no timestamps are available", async () => {
