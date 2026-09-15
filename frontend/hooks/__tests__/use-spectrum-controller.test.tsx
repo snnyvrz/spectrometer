@@ -227,6 +227,24 @@ describe("useSpectrumController", () => {
     expect(result.current.controlState).toBe("stop");
   });
 
+  it("disables the slider while playback is running", async () => {
+    socketState.readyState = ReadyState.OPEN;
+
+    const { result } = renderHook(() =>
+      useSpectrumController({ timestamps: createResolvedTimestamps() }),
+    );
+
+    expect(result.current.isSliderDisabled).toBe(false);
+
+    await act(async () => {
+      socketState.options?.onMessage?.({
+        data: JSON.stringify({ running: true }),
+      } as MessageEvent<string>);
+    });
+
+    expect(result.current.isSliderDisabled).toBe(true);
+  });
+
   it("returns early when no timestamps are available", async () => {
     socketState.readyState = ReadyState.OPEN;
 
