@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.types import Message
 
 from simulator.main import SpectrometerSimulator
 from .routes import router
@@ -50,7 +51,7 @@ async def spectrum(websocket: WebSocket):
 
     simulator = get_simulator_from_websocket(websocket)
     queue = await simulator.subscribe()
-    receive_task: asyncio.Task[object] | None = None
+    receive_task: asyncio.Task[Message] | None = None
     queue_task: asyncio.Task[object] | None = None
 
     try:
@@ -63,7 +64,9 @@ async def spectrum(websocket: WebSocket):
             )
 
             if receive_task in done:
-                receive_task.result()
+                message = receive_task.result()
+                if message["type"] == "websocket.disconnect":
+                    raise WebSocketDisconnect(code=message.get("code", 1000))
                 receive_task = asyncio.create_task(websocket.receive())
 
             if queue_task in done:
