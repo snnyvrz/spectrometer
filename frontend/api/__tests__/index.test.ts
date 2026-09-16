@@ -56,6 +56,49 @@ describe("api helpers", () => {
     });
   });
 
+  it("parses FastAPI string detail errors", async () => {
+    await loadApi();
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      json: async () => ({ detail: "Simulation is already running." }),
+    } as unknown as Response);
+
+    await expect(api.safePatch("simulation/start")).resolves.toEqual({
+      data: null,
+      error: "Simulation is already running.",
+    });
+  });
+
+  it("parses FastAPI validation detail errors", async () => {
+    await loadApi();
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        detail: [
+          {
+            type: "int_parsing",
+            loc: ["body", "index"],
+            msg: "Input should be a valid integer",
+          },
+          {
+            type: "missing",
+            loc: ["body", "timestamp"],
+            msg: "Field required",
+          },
+        ],
+      }),
+    } as unknown as Response);
+
+    await expect(
+      api.safePatch("simulation/index", { index: "bad" }),
+    ).resolves.toEqual({
+      data: null,
+      error: "Input should be a valid integer; Field required",
+    });
+  });
+
   it("sends PATCH requests with JSON bodies", async () => {
     await loadApi();
 
@@ -117,7 +160,7 @@ describe("api helpers", () => {
       json: async () => {
         throw new Error("not json");
       },
-    } as Response);
+    } as unknown as Response);
 
     await expect(api.get("simulation/timestamps")).rejects.toThrow(
       "Request failed with status 503",
@@ -133,7 +176,7 @@ describe("api helpers", () => {
       json: async () => {
         throw new Error("not json");
       },
-    } as Response);
+    } as unknown as Response);
 
     await expect(api.get("simulation/timestamps")).rejects.toThrow(
       "Invalid API response",

@@ -8,6 +8,7 @@ type ApiError = {
 type ApiResponse<T> = {
   data: T | null;
   error: ApiError | null;
+  detail?: unknown;
 };
 
 export type ApiResult<T> = {
@@ -18,6 +19,33 @@ export type ApiResult<T> = {
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) {
     return error.message;
+  }
+
+  return "Request failed";
+};
+
+const getResponseErrorMessage = <T>(json: ApiResponse<T>) => {
+  if (json.error?.message) {
+    return json.error.message;
+  }
+
+  if (typeof json.detail === "string") {
+    return json.detail;
+  }
+
+  if (Array.isArray(json.detail)) {
+    const messages = json.detail.flatMap((item) =>
+      typeof item === "object" &&
+      item !== null &&
+      "msg" in item &&
+      typeof item.msg === "string"
+        ? [item.msg]
+        : [],
+    );
+
+    if (messages.length > 0) {
+      return messages.join("; ");
+    }
   }
 
   return "Request failed";
@@ -37,7 +65,7 @@ const parseResponse = async <T>(response: Response): Promise<T> => {
   }
 
   if (!response.ok || json.error) {
-    throw new Error(json.error?.message ?? "Request failed");
+    throw new Error(getResponseErrorMessage(json));
   }
 
   if (json.data === null) {
